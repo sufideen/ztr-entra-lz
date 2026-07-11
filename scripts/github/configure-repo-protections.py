@@ -14,10 +14,23 @@ Usage:
     python configure-repo-protections.py
 
 What this does:
-    1. Requires PRs into main, with 1 approval, and blocks admin bypass
+    1. Requires PRs into main (still triggers lint/scan/What-If checks),
+       with 0 required approvals — see note below — and blocks admin bypass
     2. Creates (or updates) a "sandbox" GitHub Environment
     3. Adds the repo owner as a required reviewer on that environment
     4. Restricts deployments against that environment to the main branch
+
+NOTE on required_approving_review_count = 0:
+    GitHub does not allow a PR author to approve their own PR toward a
+    required-review count, even with write access — by design, so
+    self-approval can't rubber-stamp a review requirement. As a
+    solo operator this made every PR permanently unmergeable, so the
+    approval count is set to 0 for now: PRs are still required (forcing
+    the CI/What-If gate to run before anything reaches main), but no
+    second-person sign-off is enforced. Once collaborators are added to
+    this repo, raise this back to 1+ — that's the actual intended state
+    for a multi-person team and is noted as a Phase 2 follow-up in
+    docs/compliance-mapping.md.
 """
 
 import os
@@ -58,7 +71,7 @@ branch_protection_body = {
     # e.g. {"strict": True, "checks": [{"context": "lint-and-scan"}, {"context": "what-if"}]}
     "enforce_admins": True,  # blocks bypass, including by you as owner
     "required_pull_request_reviews": {
-        "required_approving_review_count": 1,
+        "required_approving_review_count": 0,  # see NOTE in module docstring
         "dismiss_stale_reviews": True,
     },
     "restrictions": None,  # no push restriction beyond PR requirement — sole collaborator for now
