@@ -67,20 +67,29 @@ module customRoles 'modules/rbac/customRoles.bicep' = {
   name: 'deploy-custom-rbac-roles'
 }
 
-// ---- Conditional Access + PIM: Microsoft Graph plane, deployed via Graph extension ----
-// NOTE: See docs/graph-resources.md — CA/PIM are deployed through the
-// Microsoft Graph Bicep extension where available in your Bicep CLI version;
-// otherwise via the Graph PowerShell fallback in scripts/graph/.
-module conditionalAccess 'modules/conditionalAccess.bicep' = {
-  name: 'deploy-conditional-access'
-  params: {
-    breakGlassGroupId: breakGlassGroupId
-  }
-}
-
-module pim 'modules/pim.bicep' = {
-  name: 'deploy-pim-settings'
-}
+// ---- Conditional Access + PIM: Microsoft Graph plane ----
+// STATUS: disabled in this Bicep deployment as of 2026-07-11.
+// The GitHub-hosted runner's Bicep CLI does not support the
+// `extension microsoftGraph` syntax used in conditionalAccess.bicep and
+// pim.bicep (confirmed via CI failure: BCP407 on conditionalAccess.bicep).
+// This was a known, documented risk before this repo was built — see
+// docs/graph-resources.md for the decision record and the fallback path.
+//
+// CA and PIM policies are deployed separately via the PowerShell scripts
+// in scripts/graph/ (deploy-conditional-access.ps1, deploy-pim-policies.ps1),
+// run as an explicit step outside this Bicep template until the Graph
+// extension is confirmed stable in this environment.
+//
+// module conditionalAccess 'modules/conditionalAccess.bicep' = {
+//   name: 'deploy-conditional-access'
+//   params: {
+//     breakGlassGroupId: breakGlassGroupId
+//   }
+// }
+//
+// module pim 'modules/pim.bicep' = {
+//   name: 'deploy-pim-settings'
+// }
 
 output centralWorkspaceId string = logAnalytics.outputs.workspaceId
 output customRoleIds array = customRoles.outputs.roleDefinitionIds

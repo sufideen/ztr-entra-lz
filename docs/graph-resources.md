@@ -31,3 +31,22 @@ review and approval process is identical either way.
 be the sole source of truth once Graph extension coverage is confirmed
 stable for all resource types used here (conditionalAccessPolicies,
 roleManagementPolicies, accessPackages, accessPackageAssignmentPolicies).
+
+## Update - 2026-07-11: confirmed via CI
+
+The predicted limitation above was hit on the first real pipeline run
+against this repo's GitHub-hosted runners: `az bicep build` failed with
+`BCP407` on `bicep/modules/conditionalAccess.bicep`, confirming the
+Microsoft Graph Bicep extension is not usable in this environment today.
+
+**Resolution applied**: the `conditionalAccess` and `pim` module
+references in `bicep/main.bicep` are commented out (not deleted - the
+module files remain in the repo as the intended future state). CA and
+PIM policies are deployed via the PowerShell fallback scripts in
+`scripts/graph/` as a manual step, run separately from the Bicep
+pipeline, until the Graph extension is confirmed stable.
+
+This is tracked as a Phase 2 item: re-enable the Bicep modules once a
+newer Bicep CLI version with stable Graph extension support is available
+on GitHub-hosted runners (or pin a self-hosted runner with a specific
+CLI version, if that becomes necessary sooner).
