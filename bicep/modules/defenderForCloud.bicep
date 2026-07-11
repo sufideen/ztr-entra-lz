@@ -3,6 +3,9 @@ targetScope = 'subscription'
 @description('Resource ID of the central Log Analytics workspace Defender should export to')
 param workspaceResourceId string
 
+@description('Environment name, used to locate the shared rg-security-<environment> resource group')
+param environment string
+
 var plansToEnable = [
   'VirtualMachines'
   'AppServices'
@@ -21,26 +24,16 @@ resource defenderPlans 'Microsoft.Security/pricings@2024-01-01' = [for plan in p
   }
 }]
 
-// Continuous export of Secure Score + recommendations + alerts to the central workspace
-resource continuousExport 'Microsoft.Security/automations@2023-12-01-preview' = {
-  name: 'export-to-central-law'
-  location: 'uksouth'
-  properties: {
-    isEnabled: true
-    scopes: [
-      { description: 'subscription-scope' }
-    ]
-    sources: [
-      { eventSource: 'Alerts', ruleSets: [] }
-      { eventSource: 'SecureScores', ruleSets: [] }
-      { eventSource: 'RegulatoryComplianceAssessment', ruleSets: [] }
-    ]
-    actions: [
-      {
-        actionType: 'Workspace'
-        workspaceResourceId: workspaceResourceId
-      }
-    ]
+// Continuous export of Secure Score + recommendations + alerts to the central workspace.
+// Microsoft.Security/automations is resourceGroup-scoped (unlike the subscription-scoped
+// pricings/autoProvisioningSettings resources here), so it's deployed as a nested module
+// targeting the shared rg-security-<environment> resource group - see
+// defenderContinuousExport.bicep.
+module continuousExport 'defenderContinuousExport.bicep' = {
+  name: 'deploy-defender-continuous-export'
+  scope: resourceGroup('rg-security-${environment}')
+  params: {
+    workspaceResourceId: workspaceResourceId
   }
   dependsOn: [
     defenderPlans
