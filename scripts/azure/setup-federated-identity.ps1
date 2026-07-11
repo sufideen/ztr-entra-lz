@@ -24,9 +24,11 @@
   GitHub Environment already configured with required reviewers.
 
 .PARAMETER ResourceGroupName
-  Resource group the app is granted Contributor on for this first
-  deployment. Created if it does not exist. Deliberately scoped to a
-  single resource group, not the subscription, to cap blast radius.
+  Resource group created up front so it exists before the first deployment
+  (Bicep also (re)creates it idempotently at deploy time). The RBAC grant
+  itself is scoped to the subscription, not this resource group - see the
+  "Assigning Contributor" step below for why a resource-group-scoped grant
+  is not sufficient for this repo's deployment model.
 
 .PARAMETER Location
   Azure region for the resource group if it needs creating.
@@ -127,8 +129,19 @@ else {
 }
 
 Write-Host ""
-Write-Host "Assigning Contributor role scoped to resource group $ResourceGroupName ..."
-$scope = "/subscriptions/$subscriptionId/resourceGroups/$ResourceGroupName"
+Write-Host "Assigning Contributor role scoped to subscription $subscriptionId ..."
+# main.bicep deploys at subscription scope (targetScope = 'subscription') - it
+# creates its own resource groups and deploys subscription-level resources
+# (Defender pricing plans, custom RBAC role definitions, policy definitions).
+# `az deployment sub what-if|create` requires Microsoft.Resources/deployments/*
+# permissions at the subscription itself, not just at a child resource group,
+# so a resource-group-scoped grant is not sufficient here even though the
+# resources it provisions mostly land inside rg-security-<environment>.
+# This widens the CI identity's blast radius from a single resource group to
+# the whole subscription - acceptable for the throwaway sandbox this targets
+# by default (see THROWAWAY.md), but re-evaluate before pointing this at a
+# real subscription.
+$scope = "/subscriptions/$subscriptionId"
 
 az role assignment create --assignee $appId --role "Contributor" --scope $scope | Out-Null
 
