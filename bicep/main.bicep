@@ -36,7 +36,7 @@ module logAnalytics 'modules/logAnalytics.bicep' = {
 
 module sentinelRules 'modules/sentinel/analyticsRules.bicep' = {
   name: 'deploy-sentinel-rules'
-  scope: subscription(connectivitySubscriptionId)
+  scope: resourceGroup(connectivitySubscriptionId, 'rg-security-${environment}')
   params: {
     workspaceName: logAnalytics.outputs.workspaceName
   }
@@ -51,6 +51,7 @@ module defender 'modules/defenderForCloud.bicep' = {
   scope: subscription(connectivitySubscriptionId)
   params: {
     workspaceResourceId: logAnalytics.outputs.workspaceId
+    environment: environment
   }
 }
 
@@ -72,7 +73,7 @@ module customRoles 'modules/rbac/customRoles.bicep' = {
 // The GitHub-hosted runner's Bicep CLI does not support the
 // `extension microsoftGraph` syntax used in conditionalAccess.bicep and
 // pim.bicep (confirmed via CI failure: BCP407 on conditionalAccess.bicep).
-// This was a known, documented risk before this repo was built — see
+// This was a known, documented risk before this repo was built - see
 // docs/graph-resources.md for the decision record and the fallback path.
 //
 // CA and PIM policies are deployed separately via the PowerShell scripts

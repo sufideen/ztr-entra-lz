@@ -1,4 +1,4 @@
-targetScope = 'subscription'
+targetScope = 'resourceGroup'
 
 @description('Name of the Log Analytics workspace Sentinel is onboarded to')
 param workspaceName string
@@ -41,7 +41,7 @@ resource rulePimActivationAnomaly 'Microsoft.SecurityInsights/alertRules@2024-03
   kind: 'Scheduled'
   properties: {
     displayName: 'PIM role activation outside business hours'
-    description: 'Flags privileged role activations outside 07:00-19:00 UK time, or without an approval record — a Cyber Essentials / ISO27001 A.9 access-control control point.'
+    description: 'Flags privileged role activations outside 07:00-19:00 UK time, or without an approval record - a Cyber Essentials / ISO27001 A.9 access-control control point.'
     severity: 'Medium'
     enabled: true
     query: '''
@@ -65,7 +65,7 @@ resource ruleCaPolicyChange 'Microsoft.SecurityInsights/alertRules@2024-03-01' =
   kind: 'Scheduled'
   properties: {
     displayName: 'Conditional Access policy modified outside pipeline'
-    description: 'Any CA policy change not attributable to the pipeline service principal — CA policies should only ever change via Bicep + PR review.'
+    description: 'Any CA policy change not attributable to the pipeline service principal - CA policies should only ever change via Bicep + PR review.'
     severity: 'High'
     enabled: true
     query: '''
@@ -88,7 +88,7 @@ resource ruleGuestOutsideAccessPackage 'Microsoft.SecurityInsights/alertRules@20
   kind: 'Scheduled'
   properties: {
     displayName: 'Guest account created outside Access Package workflow'
-    description: 'Detects any B2B guest invite not correlated with an Entitlement Management Access Package request — enforces "no standing guest accounts" policy.'
+    description: 'Detects any B2B guest invite not correlated with an Entitlement Management Access Package request - enforces "no standing guest accounts" policy.'
     severity: 'Medium'
     enabled: true
     query: '''
