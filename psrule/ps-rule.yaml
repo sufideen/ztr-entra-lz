@@ -1,0 +1,29 @@
+# PSRule for Azure — policy-as-code baseline enforced on every PR.
+# Reference: https://azure.github.io/PSRule.Rules.Azure/
+
+input:
+  format: Bicep
+
+configuration:
+  AZURE_BICEP_FILE_EXPANSION: true
+  AZURE_RESOURCE_ALLOWED_LOCATIONS:
+    - uksouth
+    - ukwest
+
+binding:
+  preferTargetInfo: true
+
+rule:
+  includeLocal: true
+
+# CE / ISO27001-relevant baseline rule sets
+include:
+  module:
+    - PSRule.Rules.Azure
+
+# Enforced hard failures — these map directly to Cyber Essentials + ISO27001 controls
+suppression: {}
+
+output:
+  format: Sarif
+  as: Detail

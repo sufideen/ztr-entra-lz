@@ -1,0 +1,7 @@
+*.bicep.json
+.bicep/
+reports/
+drift-report.json
+*.log
+.env
+.vscode/

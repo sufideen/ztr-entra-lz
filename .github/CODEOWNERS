@@ -1,0 +1,8 @@
+# Segregation of duties (ISO27001 A.5.3): identity-plane changes require
+# review from someone outside the requesting team.
+
+/bicep/modules/conditionalAccess.bicep   @your-org/identity-admins
+/bicep/modules/pim.bicep                 @your-org/identity-admins
+/bicep/modules/rbac/                     @your-org/identity-admins
+/bicep/modules/sentinel/                 @your-org/security-ops
+/.github/workflows/                      @your-org/platform-admins
