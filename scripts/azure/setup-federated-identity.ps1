@@ -86,8 +86,8 @@ else {
     Write-Host "Service principal already exists: $($sp.id)"
 }
 
-$credName = "$GitHubRepo-$GitHubEnvironment-deploy"
-$subject = "repo:$GitHubOrg/$GitHubRepo:environment:$GitHubEnvironment"
+$credName = "${GitHubRepo}-${GitHubEnvironment}-deploy"
+$subject = "repo:${GitHubOrg}/${GitHubRepo}:environment:${GitHubEnvironment}"
 
 Write-Host ""
 Write-Host "Creating federated credential $credName ..."
