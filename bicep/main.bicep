@@ -1,19 +1,28 @@
-targetScope = 'managementGroup'
+﻿targetScope = 'subscription'
+
+// STATUS: retargeted from managementGroup to subscription scope on
+// 2026-07-11. The original design assumed a full Azure Landing Zone
+// management group hierarchy (mg-platform, mg-connectivity, etc), but
+// this POC runs in a single sandbox subscription with no management
+// group structure set up, and the OIDC app registration's RBAC grant
+// (see scripts/azure/setup-federated-identity.ps1) is scoped to a
+// resource group, not a management group. Deploying at managementGroup
+// scope against a value that is actually a resource group name produced
+// AuthorizationFailed / invalid scope errors on the first real pipeline
+// run - see git history on this file for that failure.
+//
+// Phase 2 TODO: once a real ALZ management group hierarchy exists,
+// revisit this and connectivitySubscriptionId/identitySubscriptionId
+// below to properly support a multi-subscription hub-spoke layout.
 
 @description('Environment name, used for naming and tagging')
-param environment string = 'prod'
+param environment string = 'sandbox'
 
 @description('Azure region for the central logging/security resources')
 param location string = 'uksouth'
 
-@description('Subscription ID hosting the central Log Analytics workspace and Sentinel')
-param connectivitySubscriptionId string
-
-@description('Subscription ID hosting the identity-plane resources (custom RBAC, diagnostic policy assignment)')
-param identitySubscriptionId string
-
 @description('Object ID of the break-glass emergency access group (excluded from CA)')
-param breakGlassGroupId string
+param breakGlassGroupId string = ''
 
 @description('Tags applied to all resources for ISO27001/CE evidence traceability')
 param commonTags object = {
@@ -23,10 +32,9 @@ param commonTags object = {
   managedBy: 'bicep-ci'
 }
 
-// ---- Central logging + Sentinel (connectivity subscription) ----
+// ---- Central logging + Sentinel ----
 module logAnalytics 'modules/logAnalytics.bicep' = {
   name: 'deploy-central-law'
-  scope: subscription(connectivitySubscriptionId)
   params: {
     location: location
     environment: environment
@@ -36,7 +44,7 @@ module logAnalytics 'modules/logAnalytics.bicep' = {
 
 module sentinelRules 'modules/sentinel/analyticsRules.bicep' = {
   name: 'deploy-sentinel-rules'
-  scope: subscription(connectivitySubscriptionId)
+  scope: resourceGroup('rg-security-${environment}')
   params: {
     workspaceName: logAnalytics.outputs.workspaceName
   }
@@ -45,16 +53,16 @@ module sentinelRules 'modules/sentinel/analyticsRules.bicep' = {
   ]
 }
 
-// ---- Defender for Cloud plans (management subscription tenant-wide) ----
+// ---- Defender for Cloud plans ----
 module defender 'modules/defenderForCloud.bicep' = {
   name: 'deploy-defender-plans'
-  scope: subscription(connectivitySubscriptionId)
   params: {
     workspaceResourceId: logAnalytics.outputs.workspaceId
+    environment: environment
   }
 }
 
-// ---- Diagnostic settings enforcement policy, assigned at management group ----
+// ---- Diagnostic settings enforcement policy ----
 module diagPolicy 'modules/diagnosticSettings.bicep' = {
   name: 'deploy-diagnostic-policy'
   params: {
@@ -62,23 +70,14 @@ module diagPolicy 'modules/diagnosticSettings.bicep' = {
   }
 }
 
-// ---- Custom RBAC role definitions, assigned at management group scope ----
+// ---- Custom RBAC role definitions ----
 module customRoles 'modules/rbac/customRoles.bicep' = {
   name: 'deploy-custom-rbac-roles'
 }
 
 // ---- Conditional Access + PIM: Microsoft Graph plane ----
-// STATUS: disabled in this Bicep deployment as of 2026-07-11.
-// The GitHub-hosted runner's Bicep CLI does not support the
-// `extension microsoftGraph` syntax used in conditionalAccess.bicep and
-// pim.bicep (confirmed via CI failure: BCP407 on conditionalAccess.bicep).
-// This was a known, documented risk before this repo was built — see
-// docs/graph-resources.md for the decision record and the fallback path.
-//
-// CA and PIM policies are deployed separately via the PowerShell scripts
-// in scripts/graph/ (deploy-conditional-access.ps1, deploy-pim-policies.ps1),
-// run as an explicit step outside this Bicep template until the Graph
-// extension is confirmed stable in this environment.
+// STATUS: disabled in this Bicep deployment - see docs/graph-resources.md
+// for the decision record. Deployed separately via scripts/graph/.
 //
 // module conditionalAccess 'modules/conditionalAccess.bicep' = {
 //   name: 'deploy-conditional-access'
