@@ -1,11 +1,11 @@
-targetScope = 'managementGroup'
+targetScope = 'subscription'
 
 // Custom, least-privilege roles for the three non-employee personas.
-// All are assigned via PIM as ELIGIBLE only (see modules/pim.bicep) —
+// All are assigned via PIM as ELIGIBLE only (see modules/pim.bicep) -
 // none of these should ever be a permanent (active) assignment.
 
 resource contractorReader 'Microsoft.Authorization/roleDefinitions@2022-04-01' = {
-  name: guid(managementGroup().id, 'contractor-scoped-reader')
+  name: guid(subscription().id, 'contractor-scoped-reader')
   properties: {
     roleName: 'Contractor Scoped Reader'
     description: 'Read-only access to assigned resource group for time-boxed contractor engagements. No secrets/keys list permission.'
@@ -26,13 +26,13 @@ resource contractorReader 'Microsoft.Authorization/roleDefinitions@2022-04-01' =
       }
     ]
     assignableScopes: [
-      managementGroup().id
+      subscription().id
     ]
   }
 }
 
 resource vendorAppDeployer 'Microsoft.Authorization/roleDefinitions@2022-04-01' = {
-  name: guid(managementGroup().id, 'vendor-scoped-app-deployer')
+  name: guid(subscription().id, 'vendor-scoped-app-deployer')
   properties: {
     roleName: 'Vendor Scoped App Deployer'
     description: 'Deploy/update permissions scoped to a single vendor-facing App Service / Container App. No network, IAM, or policy write.'
@@ -52,16 +52,16 @@ resource vendorAppDeployer 'Microsoft.Authorization/roleDefinitions@2022-04-01' 
       }
     ]
     assignableScopes: [
-      managementGroup().id
+      subscription().id
     ]
   }
 }
 
 resource pipelineDeployRole 'Microsoft.Authorization/roleDefinitions@2022-04-01' = {
-  name: guid(managementGroup().id, 'pipeline-scoped-contributor')
+  name: guid(subscription().id, 'pipeline-scoped-contributor')
   properties: {
     roleName: 'Pipeline Scoped Contributor'
-    description: 'CI/CD workload identity role — Contributor minus RBAC/policy/subscription-level writes. Used by GitHub Actions OIDC federated credential only, never by a human.'
+    description: 'CI/CD workload identity role - Contributor minus RBAC/policy/subscription-level writes. Used by GitHub Actions OIDC federated credential only, never by a human.'
     type: 'CustomRole'
     permissions: [
       {
@@ -79,7 +79,7 @@ resource pipelineDeployRole 'Microsoft.Authorization/roleDefinitions@2022-04-01'
       }
     ]
     assignableScopes: [
-      managementGroup().id
+      subscription().id
     ]
   }
 }
