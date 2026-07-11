@@ -1,4 +1,4 @@
-targetScope = 'managementGroup'
+targetScope = 'subscription'
 
 @description('Resource ID of the central Log Analytics workspace')
 param workspaceResourceId string
