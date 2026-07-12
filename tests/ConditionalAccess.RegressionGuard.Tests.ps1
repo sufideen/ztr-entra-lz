@@ -26,6 +26,23 @@
   time, which runs *before* BeforeAll - putting this in BeforeAll leaves
   the -ForEach data null. (First version of this file got this wrong and
   failed CI with "Cannot index into a null array" - see PR #19.)
+
+  BeforeDiscovery's script-scope variables are visible to -ForEach (its
+  data is bound during Discovery), but are NOT reliably visible to plain,
+  non-ForEach It blocks - those execute later during the Run phase, which
+  Pester gives an isolated scope that does not inherit BeforeDiscovery's
+  assignments (this is deliberate, so Discovery re-runs don't leak state
+  into Run). The first fix in PR #19 missed this and still failed CI on a
+  real run: "finds conditionalAccess.bicep" / "finds at least one ...
+  resource" saw $script:BicepPath / $script:ResourceBlocks as null/empty
+  even though the -ForEach-driven per-policy tests passed (their data is
+  bound at Discovery time, so they're unaffected). Fixed by duplicating
+  the same few lines into BeforeAll, which plain It blocks in the Run
+  phase can see. Deliberately duplicated rather than factored into a
+  shared variable/function: a value assigned to a script-scope variable
+  during Discovery has the exact same visibility problem as $script:BicepPath
+  did, so a "shared helper" defined at Discovery time would not be callable
+  from BeforeAll either.
 #>
 
 BeforeDiscovery {
@@ -43,6 +60,18 @@ BeforeDiscovery {
     $script:ResourceBlockData = @($script:ResourceBlocks | ForEach-Object {
         @{ Name = $_.Groups['name'].Value; Body = $_.Groups['body'].Value }
     })
+}
+
+BeforeAll {
+    # Recompute (don't just reference the BeforeDiscovery values) - see the
+    # .NOTES above for why the Discovery-phase values aren't visible here.
+    $script:BicepPath = Join-Path $PSScriptRoot '..' 'bicep' 'modules' 'conditionalAccess.bicep'
+    $script:BicepContent = Get-Content -Path $script:BicepPath -Raw
+    $script:ResourceBlocks = [regex]::Matches(
+        $script:BicepContent,
+        "resource\s+(?<name>\w+)\s+'Microsoft\.Graph/conditionalAccessPolicies@[^']+'\s*=\s*\{(?<body>.*?)\n\}",
+        [System.Text.RegularExpressions.RegexOptions]::Singleline
+    )
 }
 
 Describe 'Conditional Access policies deploy report-only' {
