@@ -138,16 +138,21 @@ Environment (or run `configure-repo-secrets.py`).
 - **Re-enable PSRule as a hard gate** (currently `continue-on-error: true`
   in `deploy.yml`) once the 32-item backlog in `docs/compliance-mapping.md`
   is cleared.
-- **Triage the Checkov code-scanning alert** raised on PR #13 (non-blocking
-  today — see the repo's Security tab for details).
 - **Graph resources (Conditional Access / PIM)**: still deployed out-of-band
   via `scripts/graph/*.ps1` — `bicep/modules/conditionalAccess.bicep` and
   `pim.bicep` stay disabled pending Graph Bicep extension support
   (`BCP407` on this CI runner's Bicep CLI); revisit per
   `docs/graph-resources.md`.
-- **Fill in the POC evidence metrics** in `docs/poc-evidence/README.md`
-  (Secure Score before/after, CA policies enforced, PR-merge-to-deploy
-  time) now that a real deploy has succeeded.
-- **Phase 2**: move from single-subscription scope back to the full
-  management-group hierarchy in the Architecture diagram above, once that
-  hierarchy actually exists — see the STATUS comment in `main.bicep`.
+- **Everything else** — automated testing, Entra ID group provisioning,
+  the real management-group hierarchy, segregation-of-duties for a
+  multi-person team, audit-readiness backlog, and `ict-labs-platform`
+  integration — is tracked in **`docs/phase2-roadmap.md`**.
+
+## Testing
+
+`tests/ConditionalAccess.RegressionGuard.Tests.ps1` is a static Pester
+test (no Azure credentials needed) that runs in CI on every PR, verifying
+every Conditional Access policy deploys report-only per `THROWAWAY.md`
+Step 5. `tests/PostDeploy.Tests.ps1` is a live-resource Pester suite
+scaffolded but not yet CI-wired — see its header for how to run it
+locally against the sandbox subscription.
