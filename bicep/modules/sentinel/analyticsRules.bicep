@@ -1,4 +1,4 @@
-targetScope = 'subscription'
+targetScope = 'resourceGroup'
 
 @description('Name of the Log Analytics workspace Sentinel is onboarded to')
 param workspaceName string

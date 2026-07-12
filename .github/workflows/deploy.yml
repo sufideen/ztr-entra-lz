@@ -50,6 +50,10 @@ jobs:
       - name: Bicep lint
         run: az bicep lint --file bicep/main.bicep
 
+      - name: Ensure reports directory exists
+        if: always()
+        run: mkdir -p reports
+
       - name: PSRule for Azure - policy-as-code baseline
         uses: microsoft/ps-rule@v2
         continue-on-error: true  # POC-phase: 32 real findings tracked as backlog in

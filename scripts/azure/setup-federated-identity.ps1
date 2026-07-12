@@ -24,9 +24,11 @@
   GitHub Environment already configured with required reviewers.
 
 .PARAMETER ResourceGroupName
-  Resource group the app is granted Contributor on for this first
-  deployment. Created if it does not exist. Deliberately scoped to a
-  single resource group, not the subscription, to cap blast radius.
+  Resource group created up front so it exists before the first deployment
+  (Bicep also (re)creates it idempotently at deploy time). The RBAC grant
+  itself is scoped to the subscription, not this resource group - see the
+  "Assigning Contributor" step below for why a resource-group-scoped grant
+  is not sufficient for this repo's deployment model.
 
 .PARAMETER Location
   Azure region for the resource group if it needs creating.
@@ -46,6 +48,17 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+
+# PowerShell 7.3+ auto-converts a native command's non-zero exit code into a
+# terminating error when $ErrorActionPreference = 'Stop', which bypasses this
+# script's own $LASTEXITCODE checks below (e.g. the federated-credential
+# create call a few steps down, which is expected to "fail" harmlessly when
+# the credential already exists on a re-run). Restore the classic exit-code
+# behavior so those checks actually get a chance to run. The variable does
+# not exist on Windows PowerShell 5.1, hence the guarded check.
+if (Get-Variable -Name PSNativeCommandUseErrorActionPreference -Scope Global -ErrorAction SilentlyContinue) {
+    $PSNativeCommandUseErrorActionPreference = $false
+}
 
 Write-Host "Checking Azure CLI login state..."
 $account = az account show 2>$null | ConvertFrom-Json
@@ -105,7 +118,16 @@ $fedCredJson = $fedCredBody | ConvertTo-Json -Compress
 $tempFile = New-TemporaryFile
 Set-Content -Path $tempFile -Value $fedCredJson
 
+# Merging a native command's stderr via 2>&1 turns each stderr line into a
+# PowerShell ErrorRecord - with $ErrorActionPreference = 'Stop' (set above),
+# that throws immediately and skips the $LASTEXITCODE check below entirely,
+# regardless of PowerShell version. This call is expected to "fail" harmlessly
+# when the credential already exists on a re-run, so temporarily relax to
+# 'Continue' just for this one native invocation.
+$previousErrorActionPreference = $ErrorActionPreference
+$ErrorActionPreference = "Continue"
 $fedCredResult = az ad app federated-credential create --id $appObjectId --parameters "@$tempFile" 2>&1
+$ErrorActionPreference = $previousErrorActionPreference
 if ($LASTEXITCODE -eq 0) {
     Write-Host "Federated credential created."
 }
@@ -127,10 +149,69 @@ else {
 }
 
 Write-Host ""
-Write-Host "Assigning Contributor role scoped to resource group $ResourceGroupName ..."
-$scope = "/subscriptions/$subscriptionId/resourceGroups/$ResourceGroupName"
+Write-Host "Assigning Contributor role scoped to subscription $subscriptionId ..."
+# main.bicep deploys at subscription scope (targetScope = 'subscription') - it
+# creates its own resource groups and deploys subscription-level resources
+# (Defender pricing plans, custom RBAC role definitions, policy definitions).
+# `az deployment sub what-if|create` requires Microsoft.Resources/deployments/*
+# permissions at the subscription itself, not just at a child resource group,
+# so a resource-group-scoped grant is not sufficient here even though the
+# resources it provisions mostly land inside rg-security-<environment>.
+# This widens the CI identity's blast radius from a single resource group to
+# the whole subscription - acceptable for the throwaway sandbox this targets
+# by default (see THROWAWAY.md), but re-evaluate before pointing this at a
+# real subscription.
+$scope = "/subscriptions/$subscriptionId"
 
 az role assignment create --assignee $appId --role "Contributor" --scope $scope | Out-Null
+
+$authWriterRoleName = "ztr-entra-lz CI Authorization Writer"
+
+Write-Host ""
+Write-Host "Checking for existing custom role $authWriterRoleName ..."
+$existingAuthWriterRole = az role definition list --name $authWriterRoleName --query "[0]" | ConvertFrom-Json
+
+if ($existingAuthWriterRole) {
+    Write-Host "Custom role already exists: $($existingAuthWriterRole.id)"
+}
+else {
+    Write-Host "Creating custom role $authWriterRoleName ..."
+    # Contributor deliberately excludes all Microsoft.Authorization/*/write
+    # actions (Azure's guardrail against Contributor self-escalating access),
+    # which blocks main.bicep's customRoles.bicep (custom RBAC role
+    # definitions) and diagnosticSettings.bicep (policy definition +
+    # assignment) modules. Rather than granting the CI identity the built-in
+    # User Access Administrator role - which also grants
+    # Microsoft.Authorization/roleAssignments/write|delete, letting it grant
+    # or revoke access to anyone including itself - this narrow custom role
+    # grants only the three specific write actions those modules need, and
+    # nothing else. The CI identity can define roles and policies but can
+    # never assign them.
+    $authWriterRoleBody = @{
+        Name             = $authWriterRoleName
+        IsCustom         = $true
+        Description      = "Least-privilege alternative to User Access Administrator for CI/CD: allows writing RBAC role definitions and policy definitions/assignments only. Deliberately excludes Microsoft.Authorization/roleAssignments/* to prevent the CI identity from granting or revoking access to anyone, including itself."
+        Actions          = @(
+            "Microsoft.Authorization/roleDefinitions/write"
+            "Microsoft.Authorization/policyDefinitions/write"
+            "Microsoft.Authorization/policyAssignments/write"
+        )
+        NotActions       = @()
+        AssignableScopes = @($scope)
+    }
+    $authWriterRoleJson = $authWriterRoleBody | ConvertTo-Json -Compress
+
+    $authWriterRoleFile = New-TemporaryFile
+    Set-Content -Path $authWriterRoleFile -Value $authWriterRoleJson
+
+    az role definition create --role-definition "@$authWriterRoleFile" | Out-Null
+    Remove-Item $authWriterRoleFile -ErrorAction SilentlyContinue
+    Write-Host "Custom role created."
+}
+
+Write-Host ""
+Write-Host "Assigning $authWriterRoleName role scoped to subscription $subscriptionId ..."
+az role assignment create --assignee $appId --role $authWriterRoleName --scope $scope | Out-Null
 
 Write-Host ""
 Write-Host "Done. Summary:"

@@ -4,12 +4,16 @@
 // 2026-07-11. The original design assumed a full Azure Landing Zone
 // management group hierarchy (mg-platform, mg-connectivity, etc), but
 // this POC runs in a single sandbox subscription with no management
-// group structure set up, and the OIDC app registration's RBAC grant
-// (see scripts/azure/setup-federated-identity.ps1) is scoped to a
-// resource group, not a management group. Deploying at managementGroup
-// scope against a value that is actually a resource group name produced
-// AuthorizationFailed / invalid scope errors on the first real pipeline
-// run - see git history on this file for that failure.
+// group structure set up. Deploying at managementGroup scope against a
+// value that is actually a resource group name produced AuthorizationFailed
+// / invalid scope errors on the first real pipeline run - see git history
+// on this file for that failure.
+//
+// `az deployment sub what-if|create` (subscription scope) in turn requires
+// Microsoft.Resources/deployments/* permissions at the subscription itself,
+// not just at a resource group, so the OIDC app registration's RBAC grant
+// (see scripts/azure/setup-federated-identity.ps1) was widened from a
+// single resource group to the whole subscription to match.
 //
 // Phase 2 TODO: once a real ALZ management group hierarchy exists,
 // revisit this and connectivitySubscriptionId/identitySubscriptionId

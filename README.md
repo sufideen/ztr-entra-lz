@@ -43,6 +43,13 @@ Every subscription inherits diagnostic settings and Defender plans via
 Azure Policy `DeployIfNotExists`, so nothing new can land in the tenant
 unmonitored.
 
+> **Current status**: the diagram above is the Phase 2 / production target.
+> The POC currently deploys `bicep/main.bicep` at **subscription** scope
+> (`targetScope = 'subscription'`) against a single sandbox subscription with
+> no management group hierarchy set up — see the STATUS comment at the top of
+> `main.bicep` for why, and `THROWAWAY.md` for the sandbox this targets by
+> default.
+
 ## Personas → Access Model
 
 | Persona | Identity source | Lifecycle | Session controls |
@@ -64,13 +71,44 @@ state, Sentinel workbook, PIM audit log).
 ## Deploy
 
 See `.github/workflows/deploy.yml`. Summary: PR triggers lint + PSRule +
-What-If; merge to `main` triggers scoped deployment
-(mg → subscription → resource group) using OIDC, no stored secrets.
+Checkov + What-If; merge to `main` triggers deployment at subscription
+scope using OIDC federated credentials (no stored secrets), gated behind
+a GitHub Environment manual-approval step.
 
 ```bash
-az deployment mg create \
-  --management-group-id mg-platform \
+az deployment sub create \
   --location uksouth \
   --template-file bicep/main.bicep \
-  --parameters bicep/params/prod.bicepparam
+  --parameters bicep/params/sandbox.bicepparam
 ```
+
+### One-time bootstrap: CI OIDC identity
+
+Before the pipeline can authenticate to Azure, run
+`scripts/azure/setup-federated-identity.ps1` once (under an Azure identity
+with Owner/User Access Administrator on the target subscription) to create
+the app registration, federated credential, and RBAC grants the pipeline
+needs:
+
+```powershell
+.\scripts\azure\setup-federated-identity.ps1 -GitHubEnvironment sandbox -ResourceGroupName rg-security-sandbox
+```
+
+It's idempotent — safe to re-run any time the RBAC grants below change.
+It assigns the CI service principal:
+
+- **Contributor**, scoped to the subscription (subscription-scope
+  deployments require `Microsoft.Resources/deployments/*` permissions at
+  the subscription itself, not just at a child resource group).
+- A narrow custom role, **"ztr-entra-lz CI Authorization Writer"**, scoped
+  to the subscription — grants only
+  `Microsoft.Authorization/{roleDefinitions,policyDefinitions,policyAssignments}/write`,
+  which Contributor deliberately excludes. It does **not** include
+  `Microsoft.Authorization/roleAssignments/*`, so the CI identity can
+  define roles and policies but can never grant or revoke access to
+  anyone, including itself — a deliberately narrower alternative to the
+  built-in User Access Administrator role.
+
+Then add the script's printed `AZURE_CLIENT_ID` / `AZURE_TENANT_ID` /
+`AZURE_SUBSCRIPTION_ID` output as secrets on the `sandbox` GitHub
+Environment (or run `configure-repo-secrets.py`).
