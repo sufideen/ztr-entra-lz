@@ -3,6 +3,9 @@ targetScope = 'resourceGroup'
 @description('Name of the Log Analytics workspace Sentinel is onboarded to')
 param workspaceName string
 
+@description('App ID of the CI/CD pipeline service principal, excluded from the CA-policy-change-outside-pipeline detection. Empty string is a safe default: the rule then treats every CA policy change as unattributed to the pipeline, same conservative behaviour as the placeholder it replaces.')
+param pipelineServicePrincipalAppId string = ''
+
 resource law 'Microsoft.OperationalInsights/workspaces@2023-09-01' existing = {
   name: workspaceName
 }
@@ -75,7 +78,7 @@ resource ruleCaPolicyChange 'Microsoft.SecurityInsights/alertRules@2024-03-01' =
     query: '''
 AuditLogs
 | where Category == "Policy" and OperationName has "Conditional Access"
-| where InitiatedBy.app.appId != "REPLACE_WITH_PIPELINE_SP_APP_ID"
+| where InitiatedBy.app.appId != "${pipelineServicePrincipalAppId}"
 '''
     queryFrequency: 'PT15M'
     queryPeriod: 'PT15M'

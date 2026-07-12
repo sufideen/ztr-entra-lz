@@ -28,6 +28,9 @@ param location string = 'uksouth'
 @description('Object ID of the break-glass emergency access group (excluded from CA)')
 param breakGlassGroupId string = ''
 
+@description('App ID of the CI/CD pipeline service principal, excluded from the CA-policy-change-outside-pipeline Sentinel detection')
+param pipelineServicePrincipalAppId string = ''
+
 @description('Tags applied to all resources for ISO27001/CE evidence traceability')
 param commonTags object = {
   project: 'zero-trust-landing-zone'
@@ -51,6 +54,19 @@ module sentinelRules 'modules/sentinel/analyticsRules.bicep' = {
   scope: resourceGroup('rg-security-${environment}')
   params: {
     workspaceName: logAnalytics.outputs.workspaceName
+    pipelineServicePrincipalAppId: pipelineServicePrincipalAppId
+  }
+  dependsOn: [
+    logAnalytics
+  ]
+}
+
+module complianceWorkbook 'modules/sentinel/complianceWorkbook.bicep' = {
+  name: 'deploy-compliance-workbook'
+  scope: resourceGroup('rg-security-${environment}')
+  params: {
+    location: location
+    workspaceResourceId: logAnalytics.outputs.workspaceId
   }
   dependsOn: [
     logAnalytics
@@ -79,6 +95,11 @@ module customRoles 'modules/rbac/customRoles.bicep' = {
   name: 'deploy-custom-rbac-roles'
 }
 
+// ---- ISO 27001 regulatory-compliance policy assignment ----
+module iso27001Policy 'modules/compliance/iso27001PolicyAssignment.bicep' = {
+  name: 'deploy-iso27001-policy'
+}
+
 // ---- Conditional Access + PIM: Microsoft Graph plane ----
 // STATUS: disabled in this Bicep deployment - see docs/graph-resources.md
 // for the decision record. Deployed separately via scripts/graph/.
@@ -96,3 +117,5 @@ module customRoles 'modules/rbac/customRoles.bicep' = {
 
 output centralWorkspaceId string = logAnalytics.outputs.workspaceId
 output customRoleIds array = customRoles.outputs.roleDefinitionIds
+output complianceWorkbookId string = complianceWorkbook.outputs.workbookId
+output iso27001PolicyAssignmentId string = iso27001Policy.outputs.policyAssignmentId

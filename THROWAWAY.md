@@ -91,7 +91,25 @@ analytics rules fire correctly, screenshotting Secure Score improvements.
 
 ## Teardown
 
-When you're done demoing, delete the sandbox subscription's resource
-groups (`az group delete`) or let the M365 Developer Program tenant
-recycle naturally after 90 days of inactivity. No cleanup obligation
-beyond that for a POC-only environment.
+Since the POC deploys directly against the single all-in-one
+`ict-cloud.solutions` subscription (dev/test/POC/demo combined - see the
+status note at the top of this file), there is no separate tenant to
+recycle. Resources need to be torn down explicitly between sessions to
+avoid ongoing Log Analytics ingestion / Defender for Cloud per-resource
+billing.
+
+Run `scripts/azure/teardown-sandbox.ps1 -Environment sandbox` to remove
+everything `bicep/main.bicep` deploys: the `rg-security-<environment>`
+resource group (Log Analytics workspace, Sentinel, the compliance
+workbook), reset all 8 Defender for Cloud plans to Free tier, and delete
+the custom RBAC role definitions plus both policy assignments (diagnostic
+settings, ISO 27001). It's idempotent - safe to re-run, and each step
+skips cleanly if the resource is already gone.
+
+If test persona accounts were created via `scripts/graph/create-test-personas.ps1`,
+also run `scripts/graph/teardown-test-personas.ps1` - the sandbox script
+above does not touch Entra ID objects.
+
+After running, confirm via Cost Management + Billing that the expected
+resources are gone and billing has stopped - the script doesn't wait for
+the (asynchronous) resource group deletion to finish.
