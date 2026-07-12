@@ -165,6 +165,54 @@ $scope = "/subscriptions/$subscriptionId"
 
 az role assignment create --assignee $appId --role "Contributor" --scope $scope | Out-Null
 
+$authWriterRoleName = "ztr-entra-lz CI Authorization Writer"
+
+Write-Host ""
+Write-Host "Checking for existing custom role $authWriterRoleName ..."
+$existingAuthWriterRole = az role definition list --name $authWriterRoleName --query "[0]" | ConvertFrom-Json
+
+if ($existingAuthWriterRole) {
+    Write-Host "Custom role already exists: $($existingAuthWriterRole.id)"
+}
+else {
+    Write-Host "Creating custom role $authWriterRoleName ..."
+    # Contributor deliberately excludes all Microsoft.Authorization/*/write
+    # actions (Azure's guardrail against Contributor self-escalating access),
+    # which blocks main.bicep's customRoles.bicep (custom RBAC role
+    # definitions) and diagnosticSettings.bicep (policy definition +
+    # assignment) modules. Rather than granting the CI identity the built-in
+    # User Access Administrator role - which also grants
+    # Microsoft.Authorization/roleAssignments/write|delete, letting it grant
+    # or revoke access to anyone including itself - this narrow custom role
+    # grants only the three specific write actions those modules need, and
+    # nothing else. The CI identity can define roles and policies but can
+    # never assign them.
+    $authWriterRoleBody = @{
+        Name             = $authWriterRoleName
+        IsCustom         = $true
+        Description      = "Least-privilege alternative to User Access Administrator for CI/CD: allows writing RBAC role definitions and policy definitions/assignments only. Deliberately excludes Microsoft.Authorization/roleAssignments/* to prevent the CI identity from granting or revoking access to anyone, including itself."
+        Actions          = @(
+            "Microsoft.Authorization/roleDefinitions/write"
+            "Microsoft.Authorization/policyDefinitions/write"
+            "Microsoft.Authorization/policyAssignments/write"
+        )
+        NotActions       = @()
+        AssignableScopes = @($scope)
+    }
+    $authWriterRoleJson = $authWriterRoleBody | ConvertTo-Json -Compress
+
+    $authWriterRoleFile = New-TemporaryFile
+    Set-Content -Path $authWriterRoleFile -Value $authWriterRoleJson
+
+    az role definition create --role-definition "@$authWriterRoleFile" | Out-Null
+    Remove-Item $authWriterRoleFile -ErrorAction SilentlyContinue
+    Write-Host "Custom role created."
+}
+
+Write-Host ""
+Write-Host "Assigning $authWriterRoleName role scoped to subscription $subscriptionId ..."
+az role assignment create --assignee $appId --role $authWriterRoleName --scope $scope | Out-Null
+
 Write-Host ""
 Write-Host "Done. Summary:"
 Write-Host "  App client ID     : $appId"
