@@ -20,9 +20,15 @@
 
 .NOTES
   Run locally: Invoke-Pester -Path ./tests/ConditionalAccess.RegressionGuard.Tests.ps1
+
+  The resource-block data used by the -ForEach below is built in
+  BeforeDiscovery, not BeforeAll: Pester v5 evaluates -ForEach at Discovery
+  time, which runs *before* BeforeAll - putting this in BeforeAll leaves
+  the -ForEach data null. (First version of this file got this wrong and
+  failed CI with "Cannot index into a null array" - see PR #19.)
 #>
 
-BeforeAll {
+BeforeDiscovery {
     $script:BicepPath = Join-Path $PSScriptRoot '..' 'bicep' 'modules' 'conditionalAccess.bicep'
     $script:BicepContent = Get-Content -Path $script:BicepPath -Raw
 
@@ -33,6 +39,10 @@ BeforeAll {
         "resource\s+(?<name>\w+)\s+'Microsoft\.Graph/conditionalAccessPolicies@[^']+'\s*=\s*\{(?<body>.*?)\n\}",
         [System.Text.RegularExpressions.RegexOptions]::Singleline
     )
+
+    $script:ResourceBlockData = @($script:ResourceBlocks | ForEach-Object {
+        @{ Name = $_.Groups['name'].Value; Body = $_.Groups['body'].Value }
+    })
 }
 
 Describe 'Conditional Access policies deploy report-only' {
@@ -45,11 +55,7 @@ Describe 'Conditional Access policies deploy report-only' {
         $script:ResourceBlocks.Count | Should -BeGreaterThan 0
     }
 
-    It '<name> is enabledForReportingButNotEnforced, not enabled' -ForEach @(
-        $script:ResourceBlocks | ForEach-Object {
-            @{ Name = $_.Groups['name'].Value; Body = $_.Groups['body'].Value }
-        }
-    ) {
+    It '<name> is enabledForReportingButNotEnforced, not enabled' -ForEach $script:ResourceBlockData {
         $stateMatch = [regex]::Match($Body, "state:\s*'(?<state>[^']+)'")
         $stateMatch.Success | Should -BeTrue -Because "resource '$Name' must have an explicit state property"
         $stateMatch.Groups['state'].Value | Should -Be 'enabledForReportingButNotEnforced' -Because "CA policy '$Name' must deploy report-only per THROWAWAY.md Step 5 - promote to 'enabled' only as a deliberate, reviewed change"
