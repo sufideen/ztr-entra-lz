@@ -118,7 +118,8 @@ jobs:
           az deployment sub what-if \
             --location uksouth \
             --template-file bicep/main.bicep \
-            --parameters bicep/params/${{ github.event.inputs.environment || 'sandbox' }}.bicepparam
+            --parameters bicep/params/${{ github.event.inputs.environment || 'sandbox' }}.bicepparam \
+            --parameters pipelineServicePrincipalAppId=${{ secrets.AZURE_CLIENT_ID }}
 
       - name: Gate - block on unexpected delete of identity-plane resources
         run: |
@@ -151,6 +152,7 @@ jobs:
             --location uksouth \
             --template-file bicep/main.bicep \
             --parameters bicep/params/${{ github.event.inputs.environment || 'sandbox' }}.bicepparam \
+            --parameters pipelineServicePrincipalAppId=${{ secrets.AZURE_CLIENT_ID }} \
             --name "ztlz-${{ github.run_number }}"
 
       - name: Apply Conditional Access / PIM fallback (Graph PowerShell)
@@ -188,6 +190,7 @@ jobs:
             --location uksouth \
             --template-file bicep/main.bicep \
             --parameters bicep/params/prod.bicepparam \
+            --parameters pipelineServicePrincipalAppId=${{ secrets.AZURE_CLIENT_ID }} \
             --result-format FullResourcePayloads > drift-report.json
       - name: Alert on drift
         run: |
