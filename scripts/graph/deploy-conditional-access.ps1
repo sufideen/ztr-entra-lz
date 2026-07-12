@@ -41,9 +41,13 @@ function Set-CaPolicy {
   }
 }
 
+# All policies below deploy report-only per THROWAWAY.md Step 5 - promote
+# each to "enabled" individually only after a bake period (min 3-5 days)
+# confirms Entra ID > Conditional Access > Insights and reporting shows no
+# legitimate access would be blocked.
 Set-CaPolicy -DisplayName "CA001 - Baseline - Require MFA for all users" -Body @{
   displayName = "CA001 - Baseline - Require MFA for all users"
-  state       = "enabled"
+  state       = "enabledForReportingButNotEnforced"
   conditions  = @{
     users        = @{ includeUsers = @("All"); excludeGroups = @($breakGlassGroupId) }
     applications = @{ includeApplications = @("All") }
@@ -54,7 +58,7 @@ Set-CaPolicy -DisplayName "CA001 - Baseline - Require MFA for all users" -Body @
 
 Set-CaPolicy -DisplayName "CA002 - Baseline - Block legacy authentication" -Body @{
   displayName = "CA002 - Baseline - Block legacy authentication"
-  state       = "enabled"
+  state       = "enabledForReportingButNotEnforced"
   conditions  = @{
     users        = @{ includeUsers = @("All"); excludeGroups = @($breakGlassGroupId) }
     applications = @{ includeApplications = @("All") }
@@ -69,7 +73,7 @@ $azureManagementAppId = if ($env:AZURE_MGMT_APP_ID) { $env:AZURE_MGMT_APP_ID } e
 
 Set-CaPolicy -DisplayName "CA010 - Employees - Require compliant device for admin portals" -Body @{
   displayName = "CA010 - Employees - Require compliant device for admin portals"
-  state       = "enabled"
+  state       = "enabledForReportingButNotEnforced"
   conditions  = @{
     users        = @{ includeUsers = @("All"); excludeGroups = @($breakGlassGroupId) }
     applications = @{ includeApplications = @($azureManagementAppId) }
@@ -80,7 +84,7 @@ Set-CaPolicy -DisplayName "CA010 - Employees - Require compliant device for admi
 
 Set-CaPolicy -DisplayName "CA020 - Guests - MFA, ToU, browser-only, no persistent session" -Body @{
   displayName = "CA020 - Guests - MFA, ToU, browser-only, no persistent session"
-  state       = "enabled"
+  state       = "enabledForReportingButNotEnforced"
   conditions  = @{
     users = @{
       includeGuestsOrExternalUsers = @{
@@ -104,7 +108,7 @@ Set-CaPolicy -DisplayName "CA020 - Guests - MFA, ToU, browser-only, no persisten
 
 Set-CaPolicy -DisplayName "CA030 - Risk-based - Block on medium/high sign-in risk" -Body @{
   displayName = "CA030 - Risk-based - Block on medium/high sign-in risk"
-  state       = "enabled"
+  state       = "enabledForReportingButNotEnforced"
   conditions  = @{
     users            = @{ includeUsers = @("All"); excludeGroups = @($breakGlassGroupId) }
     applications     = @{ includeApplications = @("All") }
