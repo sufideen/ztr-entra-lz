@@ -3,6 +3,11 @@
 // use the fallback script: scripts/graph/deploy-conditional-access.ps1
 // which applies the same policies idempotently via Microsoft.Graph PowerShell.
 // See docs/graph-resources.md for the decision record on this.
+//
+// All policies below deploy as 'enabledForReportingButNotEnforced' (report-only)
+// per THROWAWAY.md Step 5 - promote each to 'enabled' individually only after
+// a bake period (min 3-5 days) confirms Entra ID > Conditional Access > Insights
+// and reporting shows no legitimate access would be blocked.
 
 extension microsoftGraph
 
@@ -10,9 +15,11 @@ extension microsoftGraph
 param breakGlassGroupId string
 
 // --- Baseline: require MFA for everyone, block legacy auth ---
+// STATUS: report-only until a bake period confirms no legitimate access is
+// blocked - see THROWAWAY.md Step 5. Promote to 'enabled' only after that.
 resource caBaselineMfa 'Microsoft.Graph/conditionalAccessPolicies@v1.0' = {
   displayName: 'CA001 - Baseline - Require MFA for all users'
-  state: 'enabled'
+  state: 'enabledForReportingButNotEnforced'
   conditions: {
     users: {
       includeUsers: ['All']
@@ -29,9 +36,10 @@ resource caBaselineMfa 'Microsoft.Graph/conditionalAccessPolicies@v1.0' = {
   }
 }
 
+// STATUS: report-only until a bake period - see THROWAWAY.md Step 5.
 resource caBlockLegacyAuth 'Microsoft.Graph/conditionalAccessPolicies@v1.0' = {
   displayName: 'CA002 - Baseline - Block legacy authentication'
-  state: 'enabled'
+  state: 'enabledForReportingButNotEnforced'
   conditions: {
     users: {
       includeUsers: ['All']
@@ -49,9 +57,10 @@ resource caBlockLegacyAuth 'Microsoft.Graph/conditionalAccessPolicies@v1.0' = {
 }
 
 // --- Employees: compliant/hybrid-joined device required for privileged apps ---
+// STATUS: report-only until a bake period - see THROWAWAY.md Step 5.
 resource caEmployeeDeviceCompliance 'Microsoft.Graph/conditionalAccessPolicies@v1.0' = {
   displayName: 'CA010 - Employees - Require compliant device for admin portals'
-  state: 'enabled'
+  state: 'enabledForReportingButNotEnforced'
   conditions: {
     users: {
       includeUsers: ['All']
@@ -71,9 +80,10 @@ resource caEmployeeDeviceCompliance 'Microsoft.Graph/conditionalAccessPolicies@v
 }
 
 // --- Contractors / vendors (guest users): MFA + Terms of Use + browser-only session ---
+// STATUS: report-only until a bake period - see THROWAWAY.md Step 5.
 resource caGuestSessionControl 'Microsoft.Graph/conditionalAccessPolicies@v1.0' = {
   displayName: 'CA020 - Guests - MFA, ToU, browser-only, no persistent session'
-  state: 'enabled'
+  state: 'enabledForReportingButNotEnforced'
   conditions: {
     users: {
       includeGuestsOrExternalUsers: {
@@ -109,9 +119,10 @@ resource caGuestSessionControl 'Microsoft.Graph/conditionalAccessPolicies@v1.0' 
 }
 
 // --- Risk-based: sign-in risk medium/high -> block ---
+// STATUS: report-only until a bake period - see THROWAWAY.md Step 5.
 resource caSignInRisk 'Microsoft.Graph/conditionalAccessPolicies@v1.0' = {
   displayName: 'CA030 - Risk-based - Block on medium/high sign-in risk'
-  state: 'enabled'
+  state: 'enabledForReportingButNotEnforced'
   conditions: {
     users: {
       includeUsers: ['All']
