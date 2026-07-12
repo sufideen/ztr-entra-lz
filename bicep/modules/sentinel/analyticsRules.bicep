@@ -59,7 +59,7 @@ AuditLogs
     suppressionEnabled: false
     suppressionDuration: 'PT5H'
     tactics: ['PrivilegeEscalation']
-    techniques: ['T1078.004']
+    techniques: ['T1078']
   }
 }
 
@@ -112,6 +112,6 @@ AuditLogs
     suppressionEnabled: false
     suppressionDuration: 'PT5H'
     tactics: ['InitialAccess', 'Persistence']
-    techniques: ['T1136.003']
+    techniques: ['T1136']
   }
 }
