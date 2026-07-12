@@ -136,18 +136,30 @@ Environment (or run `configure-repo-secrets.py`).
 
 ## Next steps
 
+Done as of PRs #8–#23: the pipeline is green end to end, both Pester
+suites are written and CI-wired, the Sentinel compliance workbook and
+ISO 27001 policy assignment are deployed, and the break-glass/Access
+Review runbooks are documented. What's left, in `docs/phase2-roadmap.md`:
+
+- **Close the Graph resources gap for real**: `conditionalAccess.bicep`,
+  `pim.bicep`, and the newer `groups.bicep` all stay disabled/unwired
+  pending Graph Bicep extension support (`BCP407` on this CI runner's
+  Bicep CLI) — or committing fully to the PowerShell fallback path in
+  `scripts/graph/`, which needs the CI identity granted actual Graph API
+  permissions via tenant admin consent. This is the root blocker behind
+  most of what's below; see `docs/graph-resources.md`.
 - **Re-enable PSRule as a hard gate** (currently `continue-on-error: true`
   in `deploy.yml`) once the 32-item backlog in `docs/compliance-mapping.md`
   is cleared.
-- **Graph resources (Conditional Access / PIM)**: still deployed out-of-band
-  via `scripts/graph/*.ps1` — `bicep/modules/conditionalAccess.bicep` and
-  `pim.bicep` stay disabled pending Graph Bicep extension support
-  (`BCP407` on this CI runner's Bicep CLI); revisit per
-  `docs/graph-resources.md`.
-- **Everything else** — automated testing, Entra ID group provisioning,
-  the real management-group hierarchy, segregation-of-duties for a
-  multi-person team, audit-readiness backlog, and `ict-labs-platform`
-  integration — is tracked in **`docs/phase2-roadmap.md`**.
+- **Real management-group hierarchy**: needs tenant-root privilege on the
+  CI identity, and a management-group tree actually standing in the
+  tenant, before `main.bicep`'s `targetScope` can move off subscription
+  scope.
+- **Real segregation of duties**: `.github/CODEOWNERS` and
+  `configure-repo-protections.py` are both deliberately simplified for
+  solo operation — need a second collaborator before they mean anything.
+- **`ict-labs-platform` integration**: undetermined until that repo is
+  assessed directly.
 
 ## Testing
 
