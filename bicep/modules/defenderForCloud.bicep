@@ -40,10 +40,9 @@ module continuousExport 'defenderContinuousExport.bicep' = {
   ]
 }
 
-// Auto-provisioning of Log Analytics agent / Azure Monitor Agent for Defender-covered resources
-resource autoProvision 'Microsoft.Security/autoProvisioningSettings@2017-08-01-preview' = {
-  name: 'default'
-  properties: {
-    autoProvision: 'On'
-  }
-}
+// NOTE: no autoProvisioningSettings resource here - the 'On' Log Analytics
+// agent auto-provisioning setting this used to configure is deprecated and
+// rejected outright by the API as of 2024 (Microsoft retired the Log
+// Analytics/MMA agent). Defender for Cloud now handles agent provisioning
+// per-plan via extensions on the Microsoft.Security/pricings resources
+// above rather than this subscription-wide legacy setting.
