@@ -153,6 +153,10 @@ Environment (or run `configure-repo-secrets.py`).
 `tests/ConditionalAccess.RegressionGuard.Tests.ps1` is a static Pester
 test (no Azure credentials needed) that runs in CI on every PR, verifying
 every Conditional Access policy deploys report-only per `THROWAWAY.md`
-Step 5. `tests/PostDeploy.Tests.ps1` is a live-resource Pester suite
-scaffolded but not yet CI-wired — see its header for how to run it
-locally against the sandbox subscription.
+Step 5. `tests/PostDeploy.Tests.ps1` is a live-resource Pester suite that
+runs in CI as part of the `deploy` job, right after "Deploy landing zone
+(Bicep)" — it asserts the resources main.bicep just deployed (Log
+Analytics retention, Defender plan tiers, Sentinel rule state, custom
+RBAC role definitions, the CI identity's own role assignments) actually
+match what was intended. See its header for how to run it locally against
+the sandbox subscription.
