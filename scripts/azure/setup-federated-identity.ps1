@@ -49,6 +49,17 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# PowerShell 7.3+ auto-converts a native command's non-zero exit code into a
+# terminating error when $ErrorActionPreference = 'Stop', which bypasses this
+# script's own $LASTEXITCODE checks below (e.g. the federated-credential
+# create call a few steps down, which is expected to "fail" harmlessly when
+# the credential already exists on a re-run). Restore the classic exit-code
+# behavior so those checks actually get a chance to run. The variable does
+# not exist on Windows PowerShell 5.1, hence the guarded check.
+if (Get-Variable -Name PSNativeCommandUseErrorActionPreference -Scope Global -ErrorAction SilentlyContinue) {
+    $PSNativeCommandUseErrorActionPreference = $false
+}
+
 Write-Host "Checking Azure CLI login state..."
 $account = az account show 2>$null | ConvertFrom-Json
 if (-not $account) {
