@@ -50,6 +50,10 @@ jobs:
       - name: Bicep lint
         run: az bicep lint --file bicep/main.bicep
 
+      - name: Regression test - Conditional Access policies must be report-only
+        shell: pwsh
+        run: Invoke-Pester -Path ./tests/ConditionalAccess.RegressionGuard.Tests.ps1 -CI
+
       - name: Ensure reports directory exists
         if: always()
         run: mkdir -p reports
