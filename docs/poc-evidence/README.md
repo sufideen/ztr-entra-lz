@@ -106,7 +106,15 @@ document tracks the **evidence that it actually works**, not the design.
 
 ### 10. Full CI/CD pipeline run
 
-- **What was done**: _Pending_
+- **What was done**: First successful end-to-end run: PR #14 merged to
+  `main` at 2026-07-12 05:34 UTC, triggering `lint-and-scan` → `what-if` →
+  manual environment approval → `deploy`, which completed at 05:42 UTC
+  (7m 11s total). All three post-deploy validation steps passed (Bicep
+  deployment, Defender Secure Score check, Sentinel analytics rules
+  enabled check). See the run itself:
+  [actions/runs/29181378793](https://github.com/sufideen/ztr-entra-lz/actions/runs/29181378793).
+  This followed a chain of 7 PRs (#8–#14) fixing issues that only
+  surfaced once real deployments ran — see "What didn't go to plan" below.
 - **Screenshots**:
   - `screenshots/10a-pr-lint-scan-results.png`
   - `screenshots/10b-whatif-output.png`
@@ -126,11 +134,34 @@ document tracks the **evidence that it actually works**, not the design.
 
 ## What didn't go to plan
 
-_Pending — this section matters. Real engineering has friction points:
-a Graph API quirk, a CA policy interaction you didn't expect, a PIM
-onboarding step that had to be done manually. Document 2–3 of these
-honestly. This is what separates a credible case study from a marketing
-page._
+- **Static validation didn't catch most of the real deploy-time bugs.**
+  `az bicep build`, PSRule, and Checkov all passed cleanly on templates
+  that then failed against live Azure — a bogus custom log table
+  reference, an invalid Key Vault RBAC action, a deprecated Defender
+  auto-provisioning API, missing required Sentinel alert-rule properties
+  (only a linter *warning*, not a build error), invalid MITRE
+  tactic/technique IDs, an invalid KQL `join`, and a missing required
+  field on a Defender automation resource. Each only surfaced once
+  `what-if`/`deploy` actually ran, one at a time, across 6 separate PRs.
+  Static Bicep tooling checks syntax and type shape, not whether the
+  target ARM API will actually accept the payload.
+- **The subscription-scope retarget (dropping the management-group
+  hierarchy for this single-subscription POC) needed more RBAC than
+  expected.** The CI identity needed subscription-scope Contributor just
+  to run `az deployment sub`, *and* a separate grant to write
+  `Microsoft.Authorization` role/policy resources, since Contributor
+  deliberately excludes those actions. Rather than grant the built-in
+  User Access Administrator role (which can also grant/revoke access to
+  anyone, including itself), we added a narrow custom role scoped to
+  only the three specific write actions needed — a real trade-off between
+  pipeline automation and least privilege, resolved in favour of a
+  custom role over a broader built-in one.
+- **`Microsoft.Security/pricings` needed serial deployment.** Deploying
+  Defender for Cloud's 8 pricing plans as a Bicep `for` loop (parallel by
+  default) intermittently failed with `Conflict: Another update operation
+  is in progress` — an internal Azure lock on pricing tier changes that
+  isn't visible from the ARM resource model. Fixed with `@batchSize(1)`
+  to force sequential deployment.
 
 ---
 
@@ -138,10 +169,11 @@ page._
 
 | Metric | Before | After |
 |---|---|---|
-| Defender for Cloud Secure Score | _Pending_ | _Pending_ |
-| Standing privileged role assignments | _Pending_ | 0 (target) |
-| CA policies in enforced state | 0 | _Pending_ |
-| Mean time from PR merge to deploy | — | _Pending_ |
+| Defender for Cloud Secure Score | _Pending_ | _Pending_ — needs a Portal/CLI check against the sandbox subscription; not obtainable from GitHub Actions data alone |
+| Standing privileged **human** role assignments | 0 | 0 — PIM (`pim.bicep`) is still disabled pending the Graph Bicep extension (see Phase 2 readiness), so no human RBAC/Entra role assignments have been created by this pipeline yet |
+| Standing role assignments on the **CI identity** | 0 | 2 — subscription-scope Contributor + the narrow custom "ztr-entra-lz CI Authorization Writer" role (see README "One-time bootstrap"). Deliberately excludes `Microsoft.Authorization/roleAssignments/*`, but is still a standing (non-PIM-eligible) grant on an unattended identity, worth flagging against the "0 standing assignments" Zero Trust claim rather than glossing over |
+| CA policies in enforced state | 0 | 0 — `conditionalAccess.bicep` remains disabled (Graph Bicep extension unavailable on this CI runner, `BCP407`); the PowerShell fallback in `scripts/graph/` exists but its trigger condition (`vars.GRAPH_BICEP_EXTENSION_AVAILABLE == 'false'`) isn't wired up as a repo variable yet, so it doesn't currently run either |
+| Mean time from PR merge to deploy | — | 7m 11s (first successful end-to-end run, PR #14 → [run 29181378793](https://github.com/sufideen/ztr-entra-lz/actions/runs/29181378793); n=1, includes manual approval wait time) |
 
 ---
 
