@@ -30,6 +30,8 @@ SigninLogs
     queryPeriod: 'PT2H'
     triggerOperator: 'GreaterThan'
     triggerThreshold: 0
+    suppressionEnabled: false
+    suppressionDuration: 'PT5H'
     tactics: ['InitialAccess']
     techniques: ['T1078']
   }
@@ -54,6 +56,8 @@ AuditLogs
     queryPeriod: 'PT1H'
     triggerOperator: 'GreaterThan'
     triggerThreshold: 0
+    suppressionEnabled: false
+    suppressionDuration: 'PT5H'
     tactics: ['PrivilegeEscalation']
     techniques: ['T1078.004']
   }
@@ -77,7 +81,9 @@ AuditLogs
     queryPeriod: 'PT15M'
     triggerOperator: 'GreaterThan'
     triggerThreshold: 0
-    tactics: ['DefenseEvasion', 'PersistenceEscalation']
+    suppressionEnabled: false
+    suppressionDuration: 'PT5H'
+    tactics: ['DefenseEvasion', 'Persistence', 'PrivilegeEscalation']
     techniques: ['T1556']
   }
 }
@@ -103,6 +109,8 @@ AuditLogs
     queryPeriod: 'PT1H'
     triggerOperator: 'GreaterThan'
     triggerThreshold: 0
+    suppressionEnabled: false
+    suppressionDuration: 'PT5H'
     tactics: ['InitialAccess', 'Persistence']
     techniques: ['T1136.003']
   }
