@@ -118,7 +118,16 @@ $fedCredJson = $fedCredBody | ConvertTo-Json -Compress
 $tempFile = New-TemporaryFile
 Set-Content -Path $tempFile -Value $fedCredJson
 
+# Merging a native command's stderr via 2>&1 turns each stderr line into a
+# PowerShell ErrorRecord - with $ErrorActionPreference = 'Stop' (set above),
+# that throws immediately and skips the $LASTEXITCODE check below entirely,
+# regardless of PowerShell version. This call is expected to "fail" harmlessly
+# when the credential already exists on a re-run, so temporarily relax to
+# 'Continue' just for this one native invocation.
+$previousErrorActionPreference = $ErrorActionPreference
+$ErrorActionPreference = "Continue"
 $fedCredResult = az ad app federated-credential create --id $appObjectId --parameters "@$tempFile" 2>&1
+$ErrorActionPreference = $previousErrorActionPreference
 if ($LASTEXITCODE -eq 0) {
     Write-Host "Federated credential created."
 }
