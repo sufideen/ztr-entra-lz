@@ -68,6 +68,26 @@ See `docs/compliance-mapping.md` for the Cyber Essentials + ISO 27001
 Annex A control mapping and where the evidence lives (Policy compliance
 state, Sentinel workbook, PIM audit log).
 
+## Pipeline status (as of 2026-07-12)
+
+The full CI/CD pipeline — lint + PSRule + Checkov → What-If → deploy — runs
+green end to end against the sandbox subscription. Getting there took a
+chain of fixes (PRs #8–#14) across two categories:
+
+- **Template bugs**: a Bicep scope mismatch left over from the
+  subscription-scope retarget, a bogus custom log table reference, an
+  invalid Key Vault RBAC action, a deprecated Defender auto-provisioning
+  setting, missing required Sentinel alert-rule properties, invalid MITRE
+  tactic/technique IDs, an invalid KQL `join`, and a missing required
+  `scopePath` on the Defender continuous-export automation.
+- **RBAC / deployment-model gaps**: the CI service principal needed
+  subscription-scope Contributor (not just a resource-group grant) to run
+  `az deployment sub` at all, plus a narrow custom role to cover the
+  `Microsoft.Authorization/*/write` actions Contributor deliberately
+  excludes — see "One-time bootstrap" below. The Defender pricing-plan
+  deployment also needed `@batchSize(1)` to avoid an internal Azure lock
+  conflict when writing multiple plans in parallel.
+
 ## Deploy
 
 See `.github/workflows/deploy.yml`. Summary: PR triggers lint + PSRule +
@@ -112,3 +132,22 @@ It assigns the CI service principal:
 Then add the script's printed `AZURE_CLIENT_ID` / `AZURE_TENANT_ID` /
 `AZURE_SUBSCRIPTION_ID` output as secrets on the `sandbox` GitHub
 Environment (or run `configure-repo-secrets.py`).
+
+## Next steps
+
+- **Re-enable PSRule as a hard gate** (currently `continue-on-error: true`
+  in `deploy.yml`) once the 32-item backlog in `docs/compliance-mapping.md`
+  is cleared.
+- **Triage the Checkov code-scanning alert** raised on PR #13 (non-blocking
+  today — see the repo's Security tab for details).
+- **Graph resources (Conditional Access / PIM)**: still deployed out-of-band
+  via `scripts/graph/*.ps1` — `bicep/modules/conditionalAccess.bicep` and
+  `pim.bicep` stay disabled pending Graph Bicep extension support
+  (`BCP407` on this CI runner's Bicep CLI); revisit per
+  `docs/graph-resources.md`.
+- **Fill in the POC evidence metrics** in `docs/poc-evidence/README.md`
+  (Secure Score before/after, CA policies enforced, PR-merge-to-deploy
+  time) now that a real deploy has succeeded.
+- **Phase 2**: move from single-subscription scope back to the full
+  management-group hierarchy in the Architecture diagram above, once that
+  hierarchy actually exists — see the STATUS comment in `main.bicep`.
