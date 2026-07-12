@@ -17,6 +17,13 @@ var plansToEnable = [
   'CloudPosture' // CSPM, drives Secure Score
 ]
 
+// Microsoft.Security/pricings enforces a subscription-level lock on pricing
+// tier changes internally, even though each plan is a separate ARM resource -
+// deploying this loop in parallel (Bicep/ARM's default) causes intermittent
+// "Conflict: Another update operation is in progress" failures between the
+// plans. @batchSize(1) forces sequential deployment to avoid that lock
+// contention.
+@batchSize(1)
 resource defenderPlans 'Microsoft.Security/pricings@2024-01-01' = [for plan in plansToEnable: {
   name: plan
   properties: {
