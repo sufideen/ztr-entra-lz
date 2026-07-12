@@ -100,10 +100,12 @@ resource ruleGuestOutsideAccessPackage 'Microsoft.SecurityInsights/alertRules@20
     query: '''
 AuditLogs
 | where OperationName == "Invite external user"
+| extend TargetId = tostring(TargetResources[0].id)
 | join kind=leftanti (
     AuditLogs
     | where OperationName == "Request approved (Entitlement Management)"
-) on $left.TargetResources[0].id == $right.TargetResources[0].id
+    | extend TargetId = tostring(TargetResources[0].id)
+) on TargetId
 '''
     queryFrequency: 'PT1H'
     queryPeriod: 'PT1H'
