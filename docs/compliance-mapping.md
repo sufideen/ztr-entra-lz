@@ -40,8 +40,12 @@ verification, evidence is pulled from:
 ## Gaps to close before a formal audit
 
 - [x] Build the Sentinel "Compliance Evidence" workbook referenced above
-- [ ] Formalise the Access Review cadence (quarterly minimum for CE Plus)
-- [ ] Document the break-glass account procedure and test it (dry run)
+- [x] Formalise the Access Review cadence (quarterly minimum for CE Plus)
+      - see `docs/access-review-policy.md` for scope, cadence, and current
+        manual-process status pending the Graph extension gap (Workstream E)
+- [x] Document the break-glass account procedure and test it (dry run)
+      - see `docs/break-glass-procedure.md`; the dry-run itself is still a
+        manual step to perform and log in `docs/poc-evidence/README.md`
 - [x] Assign the built-in ISO 27001:2013 regulatory-compliance initiative
       (`bicep/modules/compliance/iso27001PolicyAssignment.bicep`) so the
       Defender for Cloud regulatory compliance dashboard maps to it
