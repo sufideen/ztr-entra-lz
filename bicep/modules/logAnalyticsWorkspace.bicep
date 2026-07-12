@@ -33,15 +33,5 @@ resource sentinelOnboarding 'Microsoft.SecurityInsights/onboardingStates@2024-03
   properties: {}
 }
 
-// Diagnostic categories retained beyond default for audit/compliance queries
-resource dataRetentionAuditLogs 'Microsoft.OperationalInsights/workspaces/tables@2023-09-01' = {
-  parent: law
-  name: 'AuditLogs_CL'
-  properties: {
-    retentionInDays: 730
-    totalRetentionInDays: 730
-  }
-}
-
 output workspaceId string = law.id
 output workspaceName string = law.name

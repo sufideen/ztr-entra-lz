@@ -16,7 +16,7 @@ resource contractorReader 'Microsoft.Authorization/roleDefinitions@2022-04-01' =
           '*/read'
         ]
         notActions: [
-          'Microsoft.KeyVault/vaults/secrets/readMetadata/action'
+          'Microsoft.KeyVault/vaults/secrets/read'
           'Microsoft.KeyVault/vaults/keys/read'
         ]
         dataActions: []
