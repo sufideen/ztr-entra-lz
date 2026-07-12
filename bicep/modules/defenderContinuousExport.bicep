@@ -16,7 +16,7 @@ resource continuousExport 'Microsoft.Security/automations@2023-12-01-preview' = 
   properties: {
     isEnabled: true
     scopes: [
-      { description: 'subscription-scope' }
+      { description: 'subscription-scope', scopePath: subscription().id }
     ]
     sources: [
       { eventSource: 'Alerts', ruleSets: [] }
