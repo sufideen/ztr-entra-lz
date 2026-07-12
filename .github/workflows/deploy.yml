@@ -144,6 +144,7 @@ jobs:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          enable-AzPSSession: true  # backs Get-Az*/Connect-AzAccount cmdlets used by tests/PostDeploy.Tests.ps1
 
       - name: Deploy landing zone (Bicep)
         run: |
@@ -161,17 +162,16 @@ jobs:
           ./scripts/graph/deploy-conditional-access.ps1 -Environment ${{ github.event.inputs.environment || 'sandbox' }}
           ./scripts/graph/deploy-pim-policies.ps1 -Environment ${{ github.event.inputs.environment || 'sandbox' }}
 
-      - name: Post-deploy - Defender Secure Score check
+      - name: Install Az PowerShell modules for post-deploy tests
+        shell: pwsh
         run: |
-          az security secure-scores show --name ascScore \
-            --query "properties.score.percentage" -o tsv
+          Install-Module -Name Az.Accounts, Az.SecurityInsights, Az.Security, Az.Resources, Az.OperationalInsights `
+            -Scope CurrentUser -Force -AllowClobber -Repository PSGallery
 
-      - name: Post-deploy - validate Sentinel analytics rules are enabled
+      - name: Post-deploy - live resource validation (Pester)
+        shell: pwsh
         run: |
-          az sentinel alert-rule list \
-            --resource-group rg-security-${{ github.event.inputs.environment || 'sandbox' }} \
-            --workspace-name law-central-sec-${{ github.event.inputs.environment || 'sandbox' }} \
-            --query "[?properties.enabled==\`false\`]" -o tsv
+          Invoke-Pester -CI -Container (New-PesterContainer -Path './tests/PostDeploy.Tests.ps1' -Data @{ Environment = '${{ github.event.inputs.environment || 'sandbox' }}' })
 
   # ---------- Stage 4: Scheduled drift detection ----------
   drift-detection:

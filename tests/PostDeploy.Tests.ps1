@@ -6,17 +6,15 @@
   what main.bicep is supposed to have deployed.
 
 .DESCRIPTION
-  NOT YET WIRED INTO CI. Unlike ConditionalAccess.RegressionGuard.Tests.ps1
+  Wired into deploy.yml's `deploy` job, as a step after "Deploy landing
+  zone (Bicep)", using the same OIDC login (enable-AzPSSession: true)
+  already established there. Unlike ConditionalAccess.RegressionGuard.Tests.ps1
   (a static test over Bicep source), this runs against live Azure and needs
-  real credentials + the Az PowerShell modules - test it locally first:
+  real credentials + the Az PowerShell modules - to run it locally:
 
     Connect-AzAccount
     Select-AzSubscription -SubscriptionId <sandbox-subscription-id>
     Invoke-Pester -Path ./tests/PostDeploy.Tests.ps1 -Container (New-PesterContainer -Path ./tests/PostDeploy.Tests.ps1 -Data @{ Environment = 'sandbox' })
-
-  Once confirmed working, wire into deploy.yml's `deploy` job as a step
-  after "Deploy landing zone (Bicep)", using the same OIDC login already
-  established there - see docs/phase2-roadmap.md, item 1.
 
 .PARAMETER Environment
   sandbox | dev | prod - used to build resource/resource-group names,
