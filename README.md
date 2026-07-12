@@ -66,7 +66,8 @@ All privileged **roles** (Entra + Azure RBAC) are PIM-eligible only — see
 
 See `docs/compliance-mapping.md` for the Cyber Essentials + ISO 27001
 Annex A control mapping and where the evidence lives (Policy compliance
-state, Sentinel workbook, PIM audit log).
+state, Sentinel workbook, PIM audit log). Operational runbooks referenced
+there: `docs/break-glass-procedure.md` and `docs/access-review-policy.md`.
 
 ## Pipeline status (as of 2026-07-12)
 
