@@ -75,7 +75,7 @@ resource ruleCaPolicyChange 'Microsoft.SecurityInsights/alertRules@2024-03-01' =
     description: 'Any CA policy change not attributable to the pipeline service principal — CA policies should only ever change via Bicep + PR review.'
     severity: 'High'
     enabled: true
-    query: '''
+    query: $'''
 AuditLogs
 | where Category == "Policy" and OperationName has "Conditional Access"
 | where InitiatedBy.app.appId != "${pipelineServicePrincipalAppId}"

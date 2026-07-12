@@ -68,9 +68,6 @@ module complianceWorkbook 'modules/sentinel/complianceWorkbook.bicep' = {
     location: location
     workspaceResourceId: logAnalytics.outputs.workspaceId
   }
-  dependsOn: [
-    logAnalytics
-  ]
 }
 
 // ---- Defender for Cloud plans ----
