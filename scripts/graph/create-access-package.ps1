@@ -26,10 +26,16 @@ param(
 
   [int]$DurationDays = $(if ($Persona -eq 'contractor') { 90 } else { 30 }),
 
-  [Parameter(Mandatory)][string]$SponsorGroupId
+  [Parameter(Mandatory)][string]$SponsorGroupId,
+
+  [string]$TenantId
 )
 
-Connect-MgGraph -Scopes "EntitlementManagement.ReadWrite.All" -NoWelcome
+# Explicit -TenantId avoids Windows' Web Account Manager silently defaulting
+# to a different cached work/personal account than the one you intend.
+$connectParams = @{ Scopes = "EntitlementManagement.ReadWrite.All"; NoWelcome = $true }
+if ($TenantId) { $connectParams.TenantId = $TenantId }
+Connect-MgGraph @connectParams
 
 $catalogId = $env:ZTLZ_ACCESS_PACKAGE_CATALOG_ID
 

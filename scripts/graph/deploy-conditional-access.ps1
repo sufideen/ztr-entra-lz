@@ -18,13 +18,19 @@
 param(
   [Parameter(Mandatory)]
   [ValidateSet('sandbox', 'dev', 'prod')]
-  [string]$Environment
+  [string]$Environment,
+
+  [string]$TenantId
 )
 
 # Auth uses the same federated OIDC workload identity as the Azure login step —
 # Connect-MgGraph -Identity works when running in a GitHub-hosted runner with
 # an OIDC-federated app registration granted Policy.ReadWrite.ConditionalAccess.
-Connect-MgGraph -Scopes "Policy.ReadWrite.ConditionalAccess" -NoWelcome
+# -TenantId is for manual local runs, to avoid Windows' Web Account Manager
+# silently defaulting to a different cached work/personal account.
+$connectParams = @{ Scopes = "Policy.ReadWrite.ConditionalAccess"; NoWelcome = $true }
+if ($TenantId) { $connectParams.TenantId = $TenantId }
+Connect-MgGraph @connectParams
 
 $breakGlassGroupId = $env:BREAK_GLASS_GROUP_ID
 if (-not $breakGlassGroupId) {

@@ -31,10 +31,16 @@
 #>
 [CmdletBinding(SupportsShouldProcess)]
 param(
-    [string]$RunId
+    [string]$RunId,
+
+    [string]$TenantId
 )
 
-Connect-MgGraph -Scopes "User.ReadWrite.All", "EntitlementManagement.ReadWrite.All" -NoWelcome
+# Explicit -TenantId avoids Windows' Web Account Manager silently defaulting
+# to a different cached work/personal account than the one you intend.
+$connectParams = @{ Scopes = @("User.ReadWrite.All", "EntitlementManagement.ReadWrite.All"); NoWelcome = $true }
+if ($TenantId) { $connectParams.TenantId = $TenantId }
+Connect-MgGraph @connectParams
 
 Write-Host "Finding test persona users tagged 'ztlz-test-*'$(if ($RunId) { " for RunId=$RunId" })..."
 $users = Get-MgUser -All -Property Id, DisplayName, UserPrincipalName, JobTitle |
