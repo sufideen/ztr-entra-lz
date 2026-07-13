@@ -162,6 +162,35 @@ document tracks the **evidence that it actually works**, not the design.
   is in progress` — an internal Azure lock on pricing tier changes that
   isn't visible from the ARM resource model. Fixed with `@batchSize(1)`
   to force sequential deployment.
+- **Access Package creation (`New-MgEntitlementManagementAccessPackage`)
+  turned out to be gated by three separate, non-RBAC requirements, each
+  surfacing only after the previous one was resolved.** Global
+  Administrator and an explicit Identity Governance Administrator role
+  assignment both proved insufficient — the actual blockers were: (1) the
+  tenant had zero Entra ID Governance (P2) licenses (confirmed via
+  Billing → Licenses showing `ID Governance: 0`; Catalog creation had
+  worked without this, but Access Package creation needs it — a licensing
+  gate the Graph API surfaces as a plain 403, indistinguishable from an
+  RBAC failure); (2) after starting an Entra ID Governance trial and
+  assigning the license, Entra ID Governance for **guest users**
+  additionally requires an Azure subscription linked for Monthly Active
+  User billing (External Identities → Linked subscriptions); (3) linking
+  that subscription was then rejected by an inherited management-group-
+  scope "Enforce Regional Data Residency Guardrails" Allowed Locations
+  policy — not something this project's own IaC defines, and outside this
+  subscription's policy-authoring scope to fix unilaterally. Rather than
+  chase down ownership of an org-level policy to unblock a POC test path,
+  we used the fallback the scripts were already designed for: both test
+  guests (contractor, vendor) were invited via `New-MgInvitation` without
+  an Access Package assignment. This deliberately leaves them as "guest
+  created outside Access Package workflow," which is exactly the
+  condition `ruleGuestOutsideAccessPackage`
+  (`bicep/modules/sentinel/analyticsRules.bicep`) exists to detect — so
+  the blocked path became a legitimate way to validate that detection
+  rule fires, rather than a dead end. Worth noting for anyone taking this
+  further: real production use of Entitlement Management for guests would
+  need this licensing/billing chain resolved (and a decision on the
+  regional-residency policy) before Access Packages are usable at all.
 
 ---
 
