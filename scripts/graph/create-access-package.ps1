@@ -69,5 +69,5 @@ $policy = @{
 
 New-MgEntitlementManagementAccessPackageAssignmentPolicy -BodyParameter $policy
 
-Write-Host "Access Package '$DisplayName' created — persona=$Persona, expiry=${DurationDays}d, approver group=$SponsorGroupId"
+Write-Host "Access Package '$DisplayName' created - persona=$Persona, expiry=${DurationDays}d, approver group=$SponsorGroupId"
 Disconnect-MgGraph | Out-Null
