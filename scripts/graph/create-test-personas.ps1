@@ -42,17 +42,30 @@
   Object ID of the vendor test sponsor/approver group - see
   bicep/modules/groups.bicep's vendorTestGroup output.
 
+.PARAMETER ContractorEmail
+  Real, reachable external email address for the contractor guest invite
+  (e.g. a personal inbox you control). Takes priority over -TestEmailDomain
+  for this persona. Must NOT be on a domain this tenant itself owns - Entra
+  refuses to invite a guest whose email domain is one of the tenant's own
+  verified domains.
+
+.PARAMETER VendorEmail
+  Same as -ContractorEmail, for the vendor guest invite. Deliberately
+  separate from -ContractorEmail rather than sharing one domain, since two
+  test personas commonly need two genuinely different external addresses.
+
 .PARAMETER TestEmailDomain
-  Real, reachable email domain to send B2B invitations to (e.g. a personal
-  inbox or a distribution list you control) - Entra requires a deliverable
-  invite email even for test identities.
+  Fallback used to build `ztlz-test-<persona>-<RunId>@<TestEmailDomain>`
+  for any guest persona that doesn't have an explicit -ContractorEmail/
+  -VendorEmail. Must be an external domain, not one of this tenant's own
+  verified domains (see above).
 
 .PARAMETER RunId
   Uniquely tags every object created by this run. Default: yyyyMMddHHmm
   timestamp. Pass a fixed value to make a run's objects predictable.
 
 .EXAMPLE
-  .\create-test-personas.ps1 -ContractorSponsorGroupId <guid> -VendorSponsorGroupId <guid> -TestEmailDomain example.com
+  .\create-test-personas.ps1 -ContractorSponsorGroupId <guid> -VendorSponsorGroupId <guid> -ContractorEmail me@example.com -VendorEmail me+vendor@example.com
 #>
 param(
     [ValidateSet('contractor', 'vendor', 'employee')]
@@ -61,7 +74,9 @@ param(
     [string]$ContractorSponsorGroupId,
     [string]$VendorSponsorGroupId,
 
-    [Parameter(Mandatory)]
+    [string]$ContractorEmail,
+    [string]$VendorEmail,
+
     [string]$TestEmailDomain,
 
     [string]$RunId = (Get-Date -Format 'yyyyMMddHHmm'),
@@ -78,14 +93,34 @@ $connectParams = @{ Scopes = @("User.ReadWrite.All", "EntitlementManagement.Read
 if ($TenantId) { $connectParams.TenantId = $TenantId }
 Connect-MgGraph @connectParams
 
+# Catch the "guest email domain is one of this tenant's own domains" mistake
+# here with a clear message, rather than letting it fail deep inside a Graph
+# API call for every guest persona in turn.
+$ownVerifiedDomains = (Get-MgOrganization).VerifiedDomains | ForEach-Object { $_.Name }
+function Test-ExternalEmailDomain {
+    param([string]$Email, [string]$Persona)
+    $domain = $Email.Split('@')[-1]
+    if ($ownVerifiedDomains -contains $domain) {
+        throw "The email for persona '$Persona' ($Email) is on this tenant's own domain ($domain) - Entra refuses to invite a guest whose email domain is one of the tenant's own verified domains ($($ownVerifiedDomains -join ', ')). Pass -${Persona}Email (or -TestEmailDomain) with a genuinely external address instead."
+    }
+}
+
 function New-TestGuestPersona {
     param(
         [string]$Persona,        # contractor | vendor
-        [string]$SponsorGroupId
+        [string]$SponsorGroupId,
+        [string]$Email
     )
 
     $tag = "ztlz-test-$Persona-$RunId"
-    $email = "$tag@$TestEmailDomain"
+    if (-not $Email) {
+        if (-not $TestEmailDomain) {
+            throw "No email address for persona '$Persona' - pass -${Persona}Email or -TestEmailDomain."
+        }
+        $Email = "$tag@$TestEmailDomain"
+    }
+    Test-ExternalEmailDomain -Email $Email -Persona $Persona
+    $email = $Email
 
     Write-Host ""
     Write-Host "Inviting guest for persona '$Persona': $email"
@@ -149,12 +184,12 @@ function New-TestGuestPersona {
 $createdObjects = [System.Collections.Generic.List[string]]::new()
 
 if ('contractor' -in $Personas) {
-    $id = New-TestGuestPersona -Persona 'contractor' -SponsorGroupId $ContractorSponsorGroupId
+    $id = New-TestGuestPersona -Persona 'contractor' -SponsorGroupId $ContractorSponsorGroupId -Email $ContractorEmail
     $createdObjects.Add("user:$id")
 }
 
 if ('vendor' -in $Personas) {
-    $id = New-TestGuestPersona -Persona 'vendor' -SponsorGroupId $VendorSponsorGroupId
+    $id = New-TestGuestPersona -Persona 'vendor' -SponsorGroupId $VendorSponsorGroupId -Email $VendorEmail
     $createdObjects.Add("user:$id")
 }
 
