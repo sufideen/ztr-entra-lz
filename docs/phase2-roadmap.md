@@ -48,20 +48,27 @@ IDs passed as parameters, same as every other Graph-plane resource here.
 
 ## 3. Close the Graph resources gap for real
 
-**Status: partially blocked, partially just unwired.** Two separate
-problems, not one:
+**Status: groundwork prepared, decision + execution pending.** Two
+separate problems, not one — full writeup and recommendation now in
+`docs/graph-resources.md`'s "Decision needed" section:
 
 - The Graph Bicep extension itself isn't supported on this CI runner
   (`BCP407`, confirmed via an actual pipeline failure) — wait for GA, or
   commit fully to the PowerShell fallback path in `scripts/graph/`.
 - Even the fallback path doesn't run today: `GRAPH_BICEP_EXTENSION_AVAILABLE`
-  is checked in `deploy.yml` but never set by `configure-repo-secrets.py`
-  or anywhere else. And even if it were set, the fallback would fail —
-  `setup-federated-identity.ps1` only grants the CI identity **Azure**
-  RBAC roles, never Graph API permissions
-  (`Policy.ReadWrite.ConditionalAccess`, `RoleManagementPolicy.ReadWrite.Directory`).
-  Granting those requires tenant-level admin consent — a deliberate
-  decision point, not something to automate silently.
+  is checked in `deploy.yml` but never set, and the CI identity has never
+  been granted any Graph API permission. `scripts/azure/grant-graph-api-permissions.ps1`
+  (new) is written and ready — requests exactly the two Application
+  permissions `deploy-conditional-access.ps1`/`deploy-pim-policies.ps1`
+  need, deliberately excluding the broader user/entitlement permissions
+  `create-test-personas.ps1` needs (that script is designed for a human
+  operator's own session, not the CI identity). It does not self-consent —
+  that's a separate, deliberate Global Administrator action the script
+  prints instructions for.
+- Recommendation: commit to the fallback path (option 2 in
+  `docs/graph-resources.md`) rather than wait indefinitely for extension
+  GA — this is the shared blocker keeping `groups.bicep` unwired and CA/PIM
+  enforcement untestable through the real pipeline.
 
 ## 4. Real management-group hierarchy
 
