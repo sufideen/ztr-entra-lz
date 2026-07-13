@@ -64,12 +64,19 @@ param(
     [Parameter(Mandatory)]
     [string]$TestEmailDomain,
 
-    [string]$RunId = (Get-Date -Format 'yyyyMMddHHmm')
+    [string]$RunId = (Get-Date -Format 'yyyyMMddHHmm'),
+
+    [string]$TenantId
 )
 
 $ErrorActionPreference = "Stop"
 
-Connect-MgGraph -Scopes "User.ReadWrite.All", "EntitlementManagement.ReadWrite.All" -NoWelcome
+# Explicit -TenantId avoids Windows' Web Account Manager silently defaulting
+# to a different cached work/personal account than the one you intend -
+# a real, repeatable failure mode on machines signed into multiple tenants.
+$connectParams = @{ Scopes = @("User.ReadWrite.All", "EntitlementManagement.ReadWrite.All"); NoWelcome = $true }
+if ($TenantId) { $connectParams.TenantId = $TenantId }
+Connect-MgGraph @connectParams
 
 function New-TestGuestPersona {
     param(
@@ -103,15 +110,25 @@ function New-TestGuestPersona {
     & (Join-Path $PSScriptRoot 'create-access-package.ps1') `
         -Persona $Persona `
         -DisplayName $tag `
-        -SponsorGroupId $SponsorGroupId
+        -SponsorGroupId $SponsorGroupId `
+        -TenantId $TenantId
 
     # create-access-package.ps1 disconnects Graph on exit - reconnect for
     # the rest of this script.
-    Connect-MgGraph -Scopes "User.ReadWrite.All", "EntitlementManagement.ReadWrite.All" -NoWelcome
+    Connect-MgGraph @connectParams
 
     $package = Get-MgEntitlementManagementAccessPackage -Filter "displayName eq '$tag'" | Select-Object -First 1
     if (-not $package) {
         Write-Warning "Could not find the Access Package just created for '$tag' - skipping assignment request. Request access manually."
+        return $guestUserId
+    }
+
+    # assignmentPolicyId must be the assignment POLICY's own Id, not the
+    # access package's Id - they're separate objects (the policy is created
+    # by create-access-package.ps1 via New-MgEntitlementManagementAccessPackageAssignmentPolicy).
+    $policy = Get-MgEntitlementManagementAccessPackageAssignmentPolicy -Filter "accessPackageId eq '$($package.Id)'" | Select-Object -First 1
+    if (-not $policy) {
+        Write-Warning "Could not find an assignment policy for Access Package '$tag' - skipping assignment request. Request access manually."
         return $guestUserId
     }
 
@@ -120,10 +137,10 @@ function New-TestGuestPersona {
         requestType             = "AdminAdd"
         accessPackageAssignment = @{
             targetId           = $guestUserId
-            assignmentPolicyId = $package.Id
+            assignmentPolicyId = $policy.Id
         }
     }
-    New-MgEntitlementManagementAccessPackageAssignmentRequest -BodyParameter $requestBody | Out-Null
+    New-MgEntitlementManagementAssignmentRequest -BodyParameter $requestBody | Out-Null
 
     Write-Host "  Persona '$Persona' ($tag) provisioned: guest=$guestUserId"
     return $guestUserId

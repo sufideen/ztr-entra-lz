@@ -22,10 +22,16 @@
 param(
   [Parameter(Mandatory)]
   [ValidateSet('sandbox', 'dev', 'prod')]
-  [string]$Environment
+  [string]$Environment,
+
+  [string]$TenantId
 )
 
-Connect-MgGraph -Scopes "RoleManagementPolicy.ReadWrite.Directory" -NoWelcome
+# -TenantId is for manual local runs, to avoid Windows' Web Account Manager
+# silently defaulting to a different cached work/personal account.
+$connectParams = @{ Scopes = "RoleManagementPolicy.ReadWrite.Directory"; NoWelcome = $true }
+if ($TenantId) { $connectParams.TenantId = $TenantId }
+Connect-MgGraph @connectParams
 
 # Same role set as bicep/modules/pim.bicep — keep these two lists in sync.
 $privilegedEntraRoles = @(
