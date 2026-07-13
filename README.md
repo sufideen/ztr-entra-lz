@@ -1,4 +1,4 @@
-# Zero Trust Landing Zone
+# Zero Trust Landing Zone -Entra-ID
 
 Identity-centric Zero Trust platform for Entra ID, built for mixed populations
 (employees, contractors, vendors/B2B, and workload identities) landing on top
