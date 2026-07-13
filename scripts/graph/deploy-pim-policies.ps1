@@ -43,7 +43,7 @@ foreach ($role in $privilegedEntraRoles) {
     -Filter "scopeId eq '/' and scopeType eq 'DirectoryRole' and roleDefinitionId eq '$($role.Id)'"
 
   if (-not $policyAssignment) {
-    Write-Warning "No policy assignment found for $($role.Name) — skipping. This role may need PIM onboarding first via the Entra portal (PIM > Roles > Discover and add roles)."
+    Write-Warning "No policy assignment found for $($role.Name) - skipping. This role may need PIM onboarding first via the Entra portal (PIM > Roles > Discover and add roles)."
     continue
   }
 
@@ -101,5 +101,5 @@ foreach ($role in $privilegedEntraRoles) {
 }
 
 Write-Host "PIM policy fallback deployment complete for environment: $Environment"
-Write-Host "NOTE: primaryApprovers on the approval rule is empty in this script by design — populate it with your role-owner group ID before promoting any role out of report-only testing."
+Write-Host "NOTE: primaryApprovers on the approval rule is empty in this script by design - populate it with your role-owner group ID before promoting any role out of report-only testing."
 Disconnect-MgGraph | Out-Null
