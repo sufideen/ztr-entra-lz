@@ -27,6 +27,9 @@ param(
 Connect-MgGraph -Scopes "Policy.ReadWrite.ConditionalAccess" -NoWelcome
 
 $breakGlassGroupId = $env:BREAK_GLASS_GROUP_ID
+if (-not $breakGlassGroupId) {
+  throw "BREAK_GLASS_GROUP_ID is not set. Refusing to deploy Conditional Access policies without a break-glass exclusion - see docs/break-glass-procedure.md to create the group first, then set it as a secret/env var before re-running."
+}
 
 function Set-CaPolicy {
   param([string]$DisplayName, [hashtable]$Body)

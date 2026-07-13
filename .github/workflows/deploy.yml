@@ -158,6 +158,8 @@ jobs:
       - name: Apply Conditional Access / PIM fallback (Graph PowerShell)
         if: vars.GRAPH_BICEP_EXTENSION_AVAILABLE == 'false'
         shell: pwsh
+        env:
+          BREAK_GLASS_GROUP_ID: ${{ secrets.BREAK_GLASS_GROUP_ID }}
         run: |
           ./scripts/graph/deploy-conditional-access.ps1 -Environment ${{ github.event.inputs.environment || 'sandbox' }}
           ./scripts/graph/deploy-pim-policies.ps1 -Environment ${{ github.event.inputs.environment || 'sandbox' }}
