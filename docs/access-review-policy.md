@@ -58,8 +58,11 @@ closing the Graph extension gap, which needs
 `AccessReview.ReadWrite.Membership` admin-consented Graph permissions for
 the CI identity), running this policy means manually creating the
 recurring Access Review in Entra ID → Identity Governance → Access
-reviews, using the scope/cadence table above, and manually confirming each
-scheduled review actually completed. Track manual review completions in
+reviews, using the scope/cadence table above. Confirming each scheduled
+review actually completed no longer has to be manual, though -
+`scripts/graph/export-access-review-report.ps1` (read-only,
+`AccessReview.Read.All`) exports every review definition's instances and
+reviewer decisions to CSV. Track those exports in
 `docs/poc-evidence/README.md` alongside the break-glass dry-run log, so
 both pieces of ongoing operational evidence live in one place.
 

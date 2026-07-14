@@ -10,13 +10,14 @@ ISO 27001:2022 Annex A controls, with the evidence location for an audit.
 | Least-privilege / no standing admin | User access control | A.8.2, A.5.18 | PIM eligible-only (`pim.bicep`) | PIM audit history, Access Reviews |
 | Approval + justification on privilege elevation | User access control | A.5.16, A.8.2 | `pim.bicep` approval rules | PIM activation audit log |
 | Device compliance for admin access | Malware protection / secure config | A.8.1, A.8.9 | `conditionalAccess.bicep` CA010 | Intune compliance + CA sign-in logs |
-| Patch/update management | Security update management | A.8.8 | Azure Update Manager (managed subscription) | Update Manager compliance report |
+| Patch/update management | Security update management | A.8.8 | Azure Update Manager (managed subscription) | `scripts/azure/export-patch-compliance.ps1` CSV export |
+| IT asset inventory | — | A.5.9 | N/A - VMs provisioned outside this repo's Bicep | `scripts/azure/export-vm-inventory.ps1` CSV export |
 | Boundary firewall / network segmentation | Firewalls | A.8.20, A.8.22 | ALZ hub-spoke + NSGs (see `ict-labs-platform`) | NSG flow logs in central LAW |
 | Central logging, 365-day retention | — | A.8.15, A.12.4 | `logAnalyticsWorkspace.bicep` | Workspace retention config, exported via policy |
 | Continuous monitoring / detection | — | A.5.7, A.8.16 | Sentinel analytics rules (`analyticsRules.bicep`) | Sentinel incidents, workbooks |
 | Vulnerability/posture management | Malware protection | A.8.8, A.8.9 | Defender for Cloud CSPM plan | Secure Score export to LAW |
 | Supplier/vendor access control | — | A.5.19, A.5.20, A.5.21 | Access Packages scoped per vendor, time-boxed | Entitlement Management request history |
-| Time-boxed contractor access | User access control | A.6.1, A.8.2 | Access Package expiry + access reviews | Access review completion records |
+| Time-boxed contractor access | User access control | A.6.1, A.8.2 | Access Package expiry + access reviews | `scripts/graph/export-access-review-report.ps1` CSV export |
 | Change control on identity config | — | A.8.32 | GitHub PR review + What-If gate | PR history, CI run logs |
 | No stored credentials in pipelines | Secure configuration | A.8.24 | OIDC Workload Identity Federation | GitHub Actions OIDC token exchange logs |
 | Segregation of duties (deploy vs approve) | — | A.5.3 | GitHub environment protection rules (manual approval on prod) | GitHub environment deployment history |
@@ -31,12 +32,20 @@ verification, evidence is pulled from:
    group scope, exported to CSV
 2. **Azure RBAC role assignments** — `scripts/azure/export-rbac-audit.ps1`,
    exported to CSV
-3. **PIM audit history** — Entra ID > PIM > Audit history, or
+3. **VM inventory** — `scripts/azure/export-vm-inventory.ps1`, exported to CSV
+4. **Patch/update compliance** — `scripts/azure/export-patch-compliance.ps1`
+   (Azure Resource Graph query against Update Manager assessment data),
+   exported to CSV
+5. **PIM audit history** — Entra ID > PIM > Audit history, or
    `Get-MgRoleManagementDirectoryRoleAssignmentScheduleInstance`
-4. **Sentinel workbook** — the "Zero Trust Landing Zone - Compliance
+6. **Access Review completion records** —
+   `scripts/graph/export-access-review-report.ps1`, exported to CSV - see
+   `docs/access-review-policy.md` for scope/cadence; this replaces the
+   manual portal-confirmation step described there
+7. **Sentinel workbook** — the "Zero Trust Landing Zone - Compliance
    Evidence" workbook (`bicep/modules/sentinel/complianceWorkbook.bicep`)
    pulling the queries above into a single exportable report
-5. **GitHub audit log** — PR approvals, environment deployment approvals,
+8. **GitHub audit log** — PR approvals, environment deployment approvals,
    branch protection settings (proves change control / segregation of duties)
 
 ## Gaps to close before a formal audit
