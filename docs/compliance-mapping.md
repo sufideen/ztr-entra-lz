@@ -29,12 +29,14 @@ verification, evidence is pulled from:
 
 1. **Azure Policy compliance state** — `az policy state list` at management
    group scope, exported to CSV
-2. **PIM audit history** — Entra ID > PIM > Audit history, or
+2. **Azure RBAC role assignments** — `scripts/azure/export-rbac-audit.ps1`,
+   exported to CSV
+3. **PIM audit history** — Entra ID > PIM > Audit history, or
    `Get-MgRoleManagementDirectoryRoleAssignmentScheduleInstance`
-3. **Sentinel workbook** — the "Zero Trust Landing Zone - Compliance
+4. **Sentinel workbook** — the "Zero Trust Landing Zone - Compliance
    Evidence" workbook (`bicep/modules/sentinel/complianceWorkbook.bicep`)
    pulling the queries above into a single exportable report
-4. **GitHub audit log** — PR approvals, environment deployment approvals,
+5. **GitHub audit log** — PR approvals, environment deployment approvals,
    branch protection settings (proves change control / segregation of duties)
 
 ## Gaps to close before a formal audit
