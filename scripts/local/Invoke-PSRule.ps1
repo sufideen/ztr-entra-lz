@@ -27,6 +27,12 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+# Resolve to a clean absolute path - PSRule's file globbing doesn't
+# expand literal ".." segments the way Get-ChildItem does, so a raw
+# Join-Path result silently matches zero files instead of erroring.
+$InputPath = (Resolve-Path $InputPath).ProviderPath
+$Option = (Resolve-Path $Option).ProviderPath
+
 function Find-BicepCli {
     # az bicep install places the binary under ~/.azure/bin
     $azBicep = Join-Path $HOME '.azure/bin/bicep'
