@@ -63,4 +63,8 @@ if (-not (Get-Module -ListAvailable -Name PSRule.Rules.Azure)) {
     throw 'PSRule.Rules.Azure module is not installed. Run: Install-Module -Name PSRule.Rules.Azure -Scope CurrentUser -Repository PSGallery'
 }
 
-Assert-PSRule -Module PSRule.Rules.Azure -InputPath $InputPath -Option $Option -Format Detect -ErrorAction Stop
+
+# Don't pass -Format here: it overrides psrule/ps-rule.yaml's `input.format:
+# Bicep` and PSRule can't auto-detect .bicep/.bicepparam by extension,
+# which silently produces "Rules processed: 0" instead of real results.
+Assert-PSRule -Module PSRule.Rules.Azure -InputPath $InputPath -Option $Option -ErrorAction Stop
