@@ -25,7 +25,12 @@ param(
     [string]$Option = (Join-Path $PSScriptRoot '..\..\psrule\ps-rule.yaml')
 )
 
-$ErrorActionPreference = 'Stop'
+# Deliberately not setting $ErrorActionPreference = 'Stop' globally: PSRule
+# uses non-terminating warnings internally (e.g. "no matching rules found"
+# for module files that aren't a deployable template on their own), and
+# forcing -Stop here previously made Assert-PSRule abort its scan silently
+# after the first one, reporting a false-clean "Rules processed: 0" instead
+# of an error or real results.
 
 # Resolve to a clean absolute path - PSRule's file globbing doesn't
 # expand literal ".." segments the way Get-ChildItem does, so a raw
@@ -73,4 +78,6 @@ if (-not (Get-Module -ListAvailable -Name PSRule.Rules.Azure)) {
 # Don't pass -Format here: it overrides psrule/ps-rule.yaml's `input.format:
 # Bicep` and PSRule can't auto-detect .bicep/.bicepparam by extension,
 # which silently produces "Rules processed: 0" instead of real results.
-Assert-PSRule -Module PSRule.Rules.Azure -InputPath $InputPath -Option $Option -ErrorAction Stop
+# Assert-PSRule already throws a terminating error on rule failures on its
+# own, so no explicit -ErrorAction is passed here either.
+Assert-PSRule -Module PSRule.Rules.Azure -InputPath $InputPath -Option $Option
