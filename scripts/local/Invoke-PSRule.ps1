@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Runs PSRule for Azure against the Bicep templates the same way CI does.
 
@@ -80,4 +80,5 @@ if (-not (Get-Module -ListAvailable -Name PSRule.Rules.Azure)) {
 # which silently produces "Rules processed: 0" instead of real results.
 # Assert-PSRule already throws a terminating error on rule failures on its
 # own, so no explicit -ErrorAction is passed here either.
-Assert-PSRule -Module PSRule.Rules.Azure -InputPath $InputPath -Option $Option
+Assert-PSRule -Module PSRule.Rules.Azure -InputPath $InputPath -Option $Option -Format File
+
