@@ -134,6 +134,29 @@ Then add the script's printed `AZURE_CLIENT_ID` / `AZURE_TENANT_ID` /
 `AZURE_SUBSCRIPTION_ID` output as secrets on the `sandbox` GitHub
 Environment (or run `configure-repo-secrets.py`).
 
+### Running PSRule locally
+
+CI installs the Bicep CLI itself before running PSRule (`az bicep install`
+in `deploy.yml`), so this only comes up when running `Assert-PSRule`
+directly on your own machine. `Assert-PSRule` can't find the copy of the
+Bicep CLI that `az bicep install` puts under the Azure CLI's own folder,
+which produces:
+
+```
+[ERROR] Bicep CLI can not be found. Consider installing Bicep or setting
+the PSRULE_AZURE_BICEP_PATH environment variable to resolve this issue.
+```
+
+Fix: either install the standalone Bicep CLI so it's on `PATH`, or point
+PSRule at the Azure CLI's copy with the `PSRULE_AZURE_BICEP_PATH`
+environment variable, then re-run. `scripts/local/Invoke-PSRule.ps1` does
+this automatically (installs Bicep if missing, sets the env var, and runs
+`Assert-PSRule` with this repo's `psrule/ps-rule.yaml` options):
+
+```powershell
+.\scripts\local\Invoke-PSRule.ps1
+```
+
 ## Next steps
 
 Done as of PRs #8–#23: the pipeline is green end to end, both Pester
