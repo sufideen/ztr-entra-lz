@@ -80,6 +80,7 @@ if (-not (Get-Module -ListAvailable -Name PSRule.Rules.Azure)) {
 # which silently produces "Rules processed: 0" instead of real results.
 # Assert-PSRule already throws a terminating error on rule failures on its
 # own, so no explicit -ErrorAction is passed here either.
-Assert-PSRule -Module PSRule.Rules.Azure -InputPath (Join-Path $InputPath '/**/*.bicep') -Option $Option
+Assert-PSRule -Module PSRule.Rules.Azure -InputPath (Get-ChildItem -Path $InputPath -Include "*.bicep","*.bicepparam" -Recurse | Select-Object -ExpandProperty FullName) -Option $Option
+
 
 
