@@ -1,20 +1,29 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-  Interactively tears down resource groups in the current subscription one
-  at a time, reporting billable resources before each deletion, while
-  guaranteeing a minimum number of resource groups survive.
+  Enumerates resource groups in the current subscription, then walks them
+  one at a time - opening each to show its resources tagged billable /
+  non-billable - and asks Delete or Keep, while guaranteeing a minimum
+  number of resource groups survive.
 
 .DESCRIPTION
   teardown-all-resource-groups.ps1 is all-or-nothing (-Force deletes every
   resource group). This script is for the case where you want to keep some
-  resource groups around and decide group-by-group: it first prints an
-  inventory of every resource group and the resources inside it, then walks
-  each resource group in turn and asks Delete / Keep / Quit. For a group
-  you choose to delete, it deletes the resources inside that group first,
-  then deletes the (now empty) group itself - resources before resource
-  groups, so you see exactly what's being removed at each step rather than
-  a single opaque `az group delete`.
+  resource groups around and decide group-by-group:
+
+    1. Enumerate every resource group in the subscription (name + resource
+       count only - a quick list, not a full dump).
+    2. Open each resource group in turn and list the resources inside it,
+       each tagged [Billable] / [Non-billable] / [Unknown] using a
+       best-effort lookup table by resource type (see Get-BillabilityLabel
+       below - always confirm actual spend in Cost Management, this is a
+       heuristic, not billing data).
+    3. Ask Delete or Keep for that group. Answering keeps moves straight to
+       the next resource group - no need to reselect anything.
+
+  For a group you delete, resources inside it are deleted first, then the
+  (now empty) group itself - so you see exactly what's being removed at
+  each step rather than a single opaque `az group delete`.
 
   A minimum-keep floor (-MinimumKeep, default 3) is enforced: once enough
   groups have been deleted that only MinimumKeep remain, the rest are kept
@@ -32,7 +41,7 @@
 
 .EXAMPLE
   .\teardown-resource-groups-interactive.ps1
-  Lists every resource group and its resources, then prompts for each one.
+  Enumerates every resource group, then opens each one in turn and prompts.
 
 .EXAMPLE
   .\teardown-resource-groups-interactive.ps1 -MinimumKeep 5 -ExcludeResourceGroups rg-security-sandbox
@@ -49,6 +58,68 @@ if (Get-Variable -Name PSNativeCommandUseErrorActionPreference -Scope Global -Er
     $PSNativeCommandUseErrorActionPreference = $false
 }
 
+# Best-effort classification by resource type. Azure's actual bill depends
+# on SKU/tier/usage (e.g. a Basic Load Balancer is free, Standard isn't),
+# so treat this as a guide for what to look at first, not ground truth -
+# cross-check anything that matters in Cost Management + Billing.
+$BillableTypePatterns = @(
+    'microsoft.compute/virtualmachines',
+    'microsoft.compute/disks',
+    'microsoft.compute/virtualmachinescalesets',
+    'microsoft.storage/storageaccounts',
+    'microsoft.operationalinsights/workspaces',
+    'microsoft.insights/components',
+    'microsoft.sql/servers/databases',
+    'microsoft.sql/managedinstances',
+    'microsoft.web/serverfarms',
+    'microsoft.web/sites',
+    'microsoft.containerservice/managedclusters',
+    'microsoft.network/publicipaddresses',
+    'microsoft.network/applicationgateways',
+    'microsoft.network/loadbalancers',
+    'microsoft.network/azurefirewalls',
+    'microsoft.network/bastionhosts',
+    'microsoft.network/natgateways',
+    'microsoft.network/virtualnetworkgateways',
+    'microsoft.network/expressroutecircuits',
+    'microsoft.network/privateendpoints',
+    'microsoft.keyvault/vaults',
+    'microsoft.cognitiveservices/accounts',
+    'microsoft.documentdb/databaseaccounts',
+    'microsoft.cache/redis',
+    'microsoft.eventhub/namespaces',
+    'microsoft.servicebus/namespaces',
+    'microsoft.cdn/profiles',
+    'microsoft.containerregistry/registries'
+)
+$NonBillableTypePatterns = @(
+    'microsoft.network/virtualnetworks',
+    'microsoft.network/networksecuritygroups',
+    'microsoft.network/routetables',
+    'microsoft.network/networkinterfaces',
+    'microsoft.network/privatednszones',
+    'microsoft.managedidentity/userassignedidentities',
+    'microsoft.authorization/roleassignments',
+    'microsoft.authorization/policyassignments',
+    'microsoft.insights/diagnosticsettings',
+    'microsoft.insights/workbooks',
+    'microsoft.operationsmanagement/solutions',
+    'microsoft.securityinsights',
+    'microsoft.resources/deployments'
+)
+
+function Get-BillabilityLabel {
+    param([string]$ResourceType)
+    $t = $ResourceType.ToLowerInvariant()
+    foreach ($pattern in $BillableTypePatterns) {
+        if ($t -like "$pattern*") { return '[Billable]' }
+    }
+    foreach ($pattern in $NonBillableTypePatterns) {
+        if ($t -like "$pattern*") { return '[Non-billable]' }
+    }
+    return '[Unknown - check Cost Management]'
+}
+
 Write-Host "Checking Azure CLI login state..."
 $account = az account show 2>$null | ConvertFrom-Json
 if (-not $account) {
@@ -59,7 +130,7 @@ if (-not $account) {
 Write-Host "Using subscription: $($account.name) ($($account.id))"
 
 Write-Host ""
-Write-Host "Discovering resource groups and their resources..."
+Write-Host "Enumerating resource groups..."
 $groupNames = @(az group list --query "[].name" | ConvertFrom-Json)
 
 if (-not $groupNames) {
@@ -67,34 +138,11 @@ if (-not $groupNames) {
     exit 0
 }
 
-# Inventory pass: pull resources for every group up front so the full
-# picture (and total resource/billable footprint) is visible before any
-# prompting starts.
-$inventory = [ordered]@{}
-foreach ($rg in $groupNames) {
-    $resources = @(az resource list --resource-group $rg --query "[].{Id:id,Name:name,Type:type,Location:location}" | ConvertFrom-Json)
-    $inventory[$rg] = $resources
-}
-
 Write-Host ""
-Write-Host "=== Inventory: $($groupNames.Count) resource group(s) ==="
-$totalResources = 0
-foreach ($rg in $groupNames) {
-    $resources = $inventory[$rg]
-    $totalResources += $resources.Count
-    Write-Host ""
-    Write-Host "$rg ($($resources.Count) resource(s))" -ForegroundColor Cyan
-    if ($resources.Count -eq 0) {
-        Write-Host "  (empty)"
-    }
-    else {
-        foreach ($res in $resources) {
-            Write-Host "  - $($res.Name)  [$($res.Type)]  $($res.Location)"
-        }
-    }
+Write-Host "=== $($groupNames.Count) resource group(s) ==="
+for ($i = 0; $i -lt $groupNames.Count; $i++) {
+    Write-Host "  $($i + 1). $($groupNames[$i])"
 }
-Write-Host ""
-Write-Host "Total: $($groupNames.Count) resource group(s), $totalResources resource(s) across all of them."
 
 $excludeSet = [System.Collections.Generic.HashSet[string]]::new(
     [string[]]$ExcludeResourceGroups,
@@ -130,13 +178,19 @@ foreach ($rg in $groupNames) {
         continue
     }
 
-    $resources = $inventory[$rg]
     Write-Host ""
-    Write-Host "--- $rg ($($resources.Count) resource(s)) ---" -ForegroundColor Yellow
-    foreach ($res in $resources) {
-        Write-Host "  - $($res.Name)  [$($res.Type)]"
+    Write-Host "=== Opening '$rg' ===" -ForegroundColor Yellow
+    $resources = @(az resource list --resource-group $rg --query "[].{Id:id,Name:name,Type:type,Location:location}" | ConvertFrom-Json)
+    if ($resources.Count -eq 0) {
+        Write-Host "  (empty - no resources)"
     }
-    $remainingAfterThis = $groupNames.Count - $deleted.Count - 1
+    else {
+        foreach ($res in $resources) {
+            $label = Get-BillabilityLabel -ResourceType $res.Type
+            Write-Host "  - $($res.Name)  [$($res.Type)]  $label"
+        }
+    }
+
     $answer = Read-Host "Delete '$rg' and its $($resources.Count) resource(s)? [y/N/q=quit]"
 
     switch ($answer.ToLowerInvariant()) {
@@ -160,7 +214,7 @@ foreach ($rg in $groupNames) {
             $deleted += $rg
         }
         default {
-            Write-Host "Keeping '$rg'."
+            Write-Host "Keeping '$rg'. Moving to the next resource group."
             $kept += $rg
         }
     }
