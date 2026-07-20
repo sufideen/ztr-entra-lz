@@ -121,17 +121,25 @@ function Get-BillabilityLabel {
 }
 
 Write-Host "Checking Azure CLI login state..."
-$account = az account show --output json 2>$null | ConvertFrom-Json
-if (-not $account) {
+$subscriptionName = az account show --query name --output tsv 2>$null
+if (-not $subscriptionName) {
     Write-Host "Not logged in. Running az login..."
     az login | Out-Null
-    $account = az account show --output json | ConvertFrom-Json
+    $subscriptionName = az account show --query name --output tsv
 }
-Write-Host "Using subscription: $($account.name) ($($account.id))"
+$subscriptionId = az account show --query id --output tsv
+Write-Host "Using subscription: $subscriptionName ($subscriptionId)"
 
 Write-Host ""
 Write-Host "Enumerating resource groups..."
-$groupNames = @(az group list --query "[].name" --output json | ConvertFrom-Json)
+# --output tsv, not json: az group list --query "[].name" | ConvertFrom-Json
+# has been observed to collapse the whole array into a single
+# space-joined string on some Windows PowerShell 5.1 setups (a
+# ConvertFrom-Json pipeline-aggregation quirk with JSON arrays of bare
+# scalars). tsv sidesteps it entirely - PowerShell splits an external
+# command's multi-line stdout into a real array of lines on its own, no
+# JSON parsing involved.
+$groupNames = @(az group list --query "[].name" --output tsv | Where-Object { $_ })
 
 if (-not $groupNames) {
     Write-Host "No resource groups in this subscription. Nothing to do."
@@ -180,7 +188,19 @@ foreach ($rg in $groupNames) {
 
     Write-Host ""
     Write-Host "=== Opening '$rg' ===" -ForegroundColor Yellow
-    $resources = @(az resource list --resource-group $rg --query "[].{Id:id,Name:name,Type:type,Location:location}" --output json | ConvertFrom-Json)
+    # tsv + manual split, same reasoning as the group enumeration above -
+    # avoids ConvertFrom-Json for list-shaped az output.
+    $resourceLines = @(az resource list --resource-group $rg --query "[].[id,name,type,location]" --output tsv | Where-Object { $_ })
+    $resources = foreach ($line in $resourceLines) {
+        $fields = $line -split "`t"
+        [pscustomobject]@{
+            Id       = $fields[0]
+            Name     = $fields[1]
+            Type     = $fields[2]
+            Location = $fields[3]
+        }
+    }
+    $resources = @($resources)
     if ($resources.Count -eq 0) {
         Write-Host "  (empty - no resources)"
     }

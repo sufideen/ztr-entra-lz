@@ -61,13 +61,14 @@ if (Get-Variable -Name PSNativeCommandUseErrorActionPreference -Scope Global -Er
 }
 
 Write-Host "Checking Azure CLI login state..."
-$account = az account show --output json 2>$null | ConvertFrom-Json
-if (-not $account) {
+$subscriptionName = az account show --query name --output tsv 2>$null
+if (-not $subscriptionName) {
     Write-Host "Not logged in. Running az login..."
     az login | Out-Null
-    $account = az account show --output json | ConvertFrom-Json
+    $subscriptionName = az account show --query name --output tsv
 }
-Write-Host "Using subscription: $($account.name) ($($account.id))"
+$subscriptionId = az account show --query id --output tsv
+Write-Host "Using subscription: $subscriptionName ($subscriptionId)"
 
 if (-not $Force) {
     Write-Host ""
@@ -76,7 +77,13 @@ if (-not $Force) {
 
 Write-Host ""
 Write-Host "Listing resource groups in this subscription..."
-$resourceGroups = az group list --query "[].name" --output json | ConvertFrom-Json
+# --output tsv, not json: az group list --query "[].name" | ConvertFrom-Json
+# has been observed to collapse the whole array into a single space-joined
+# string on some Windows PowerShell 5.1 setups (a ConvertFrom-Json
+# pipeline-aggregation quirk with JSON arrays of bare scalars). tsv
+# sidesteps it - PowerShell splits external command stdout into a real
+# array of lines on its own, no JSON parsing involved.
+$resourceGroups = @(az group list --query "[].name" --output tsv | Where-Object { $_ })
 
 $excludeSet = [System.Collections.Generic.HashSet[string]]::new(
     [string[]]$ExcludeResourceGroups,
