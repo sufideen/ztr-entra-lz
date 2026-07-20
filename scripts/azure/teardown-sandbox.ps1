@@ -40,11 +40,11 @@ if (Get-Variable -Name PSNativeCommandUseErrorActionPreference -Scope Global -Er
 }
 
 Write-Host "Checking Azure CLI login state..."
-$account = az account show 2>$null | ConvertFrom-Json
+$account = az account show --output json 2>$null | ConvertFrom-Json
 if (-not $account) {
     Write-Host "Not logged in. Running az login..."
     az login | Out-Null
-    $account = az account show | ConvertFrom-Json
+    $account = az account show --output json | ConvertFrom-Json
 }
 Write-Host "Using subscription: $($account.name) ($($account.id))"
 
@@ -62,7 +62,7 @@ $defenderPlans = @(
 
 Write-Host ""
 Write-Host "Step 1: Deleting resource group $resourceGroupName (Log Analytics, Sentinel, compliance workbook)..."
-$rgExists = az group exists --name $resourceGroupName | ConvertFrom-Json
+$rgExists = az group exists --name $resourceGroupName --output json | ConvertFrom-Json
 if ($rgExists) {
     az group delete --name $resourceGroupName --yes --no-wait
     Write-Host "Deletion started (--no-wait) - this runs in the background in Azure."
@@ -80,7 +80,7 @@ foreach ($plan in $defenderPlans) {
 
 Write-Host ""
 Write-Host "Step 3: Deleting the ISO27001 policy assignment..."
-$isoAssignment = az policy assignment list --query "[?name=='assign-iso27001-2013'] | [0]" | ConvertFrom-Json
+$isoAssignment = az policy assignment list --query "[?name=='assign-iso27001-2013'] | [0]" --output json | ConvertFrom-Json
 if ($isoAssignment) {
     az policy assignment delete --name 'assign-iso27001-2013'
     Write-Host "Deleted."
@@ -91,7 +91,7 @@ else {
 
 Write-Host ""
 Write-Host "Step 4: Deleting the diagnostic-settings policy assignment and definition..."
-$diagAssignment = az policy assignment list --query "[?name=='assign-diag-settings'] | [0]" | ConvertFrom-Json
+$diagAssignment = az policy assignment list --query "[?name=='assign-diag-settings'] | [0]" --output json | ConvertFrom-Json
 if ($diagAssignment) {
     az policy assignment delete --name 'assign-diag-settings'
     Write-Host "Deleted assignment."
@@ -99,7 +99,7 @@ if ($diagAssignment) {
 else {
     Write-Host "Assignment not found. Skipping."
 }
-$diagDefinition = az policy definition list --query "[?name=='deploy-diag-settings-to-central-law'] | [0]" | ConvertFrom-Json
+$diagDefinition = az policy definition list --query "[?name=='deploy-diag-settings-to-central-law'] | [0]" --output json | ConvertFrom-Json
 if ($diagDefinition) {
     az policy definition delete --name 'deploy-diag-settings-to-central-law'
     Write-Host "Deleted definition."
@@ -111,7 +111,7 @@ else {
 Write-Host ""
 Write-Host "Step 5: Deleting custom RBAC role definitions..."
 foreach ($roleName in $customRoleNames) {
-    $role = az role definition list --name $roleName --query "[0]" | ConvertFrom-Json
+    $role = az role definition list --name $roleName --query "[0]" --output json | ConvertFrom-Json
     if ($role) {
         Write-Host "  Deleting $roleName ..."
         az role definition delete --name $roleName

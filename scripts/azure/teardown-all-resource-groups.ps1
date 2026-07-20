@@ -61,11 +61,11 @@ if (Get-Variable -Name PSNativeCommandUseErrorActionPreference -Scope Global -Er
 }
 
 Write-Host "Checking Azure CLI login state..."
-$account = az account show 2>$null | ConvertFrom-Json
+$account = az account show --output json 2>$null | ConvertFrom-Json
 if (-not $account) {
     Write-Host "Not logged in. Running az login..."
     az login | Out-Null
-    $account = az account show | ConvertFrom-Json
+    $account = az account show --output json | ConvertFrom-Json
 }
 Write-Host "Using subscription: $($account.name) ($($account.id))"
 
@@ -76,7 +76,7 @@ if (-not $Force) {
 
 Write-Host ""
 Write-Host "Listing resource groups in this subscription..."
-$resourceGroups = az group list --query "[].name" | ConvertFrom-Json
+$resourceGroups = az group list --query "[].name" --output json | ConvertFrom-Json
 
 $excludeSet = [System.Collections.Generic.HashSet[string]]::new(
     [string[]]$ExcludeResourceGroups,

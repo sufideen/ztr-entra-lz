@@ -70,16 +70,17 @@ if ($IncludeGroupsPermission) {
 }
 
 Write-Host "Checking Azure CLI login state..."
-$account = az account show 2>$null | ConvertFrom-Json
+$account = az account show --output json 2>$null | ConvertFrom-Json
 if (-not $account) {
     Write-Host "Not logged in. Running az login..."
     az login | Out-Null
+    $account = az account show --output json | ConvertFrom-Json
 }
 Write-Host "Using subscription: $($account.name)"
 
 Write-Host ""
 Write-Host "Looking up app registration '$AppDisplayName'..."
-$app = az ad app list --display-name $AppDisplayName --query "[0]" | ConvertFrom-Json
+$app = az ad app list --display-name $AppDisplayName --query "[0]" --output json | ConvertFrom-Json
 if (-not $app) {
     throw "App registration '$AppDisplayName' not found - run scripts/azure/setup-federated-identity.ps1 first."
 }
@@ -88,7 +89,7 @@ Write-Host "Found app: $appId"
 
 Write-Host ""
 Write-Host "Resolving Microsoft Graph service principal ($graphAppId)..."
-$graphSp = az ad sp show --id $graphAppId | ConvertFrom-Json
+$graphSp = az ad sp show --id $graphAppId --output json | ConvertFrom-Json
 
 Write-Host ""
 Write-Host "Requesting Application permissions: $($permissions -join ', ')"

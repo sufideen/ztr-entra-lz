@@ -121,17 +121,17 @@ function Get-BillabilityLabel {
 }
 
 Write-Host "Checking Azure CLI login state..."
-$account = az account show 2>$null | ConvertFrom-Json
+$account = az account show --output json 2>$null | ConvertFrom-Json
 if (-not $account) {
     Write-Host "Not logged in. Running az login..."
     az login | Out-Null
-    $account = az account show | ConvertFrom-Json
+    $account = az account show --output json | ConvertFrom-Json
 }
 Write-Host "Using subscription: $($account.name) ($($account.id))"
 
 Write-Host ""
 Write-Host "Enumerating resource groups..."
-$groupNames = @(az group list --query "[].name" | ConvertFrom-Json)
+$groupNames = @(az group list --query "[].name" --output json | ConvertFrom-Json)
 
 if (-not $groupNames) {
     Write-Host "No resource groups in this subscription. Nothing to do."
@@ -180,7 +180,7 @@ foreach ($rg in $groupNames) {
 
     Write-Host ""
     Write-Host "=== Opening '$rg' ===" -ForegroundColor Yellow
-    $resources = @(az resource list --resource-group $rg --query "[].{Id:id,Name:name,Type:type,Location:location}" | ConvertFrom-Json)
+    $resources = @(az resource list --resource-group $rg --query "[].{Id:id,Name:name,Type:type,Location:location}" --output json | ConvertFrom-Json)
     if ($resources.Count -eq 0) {
         Write-Host "  (empty - no resources)"
     }

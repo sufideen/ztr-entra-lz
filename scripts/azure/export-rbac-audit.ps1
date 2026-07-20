@@ -35,17 +35,17 @@ if (Get-Variable -Name PSNativeCommandUseErrorActionPreference -Scope Global -Er
 }
 
 Write-Host "Checking Azure CLI login state..."
-$account = az account show 2>$null | ConvertFrom-Json
+$account = az account show --output json 2>$null | ConvertFrom-Json
 if (-not $account) {
     Write-Host "Not logged in. Running az login..."
     az login | Out-Null
-    $account = az account show | ConvertFrom-Json
+    $account = az account show --output json | ConvertFrom-Json
 }
 Write-Host "Using subscription: $($account.name) ($($account.id))"
 
 Write-Host ""
 Write-Host "Listing role assignments..."
-$listArgs = @('role', 'assignment', 'list', '--all')
+$listArgs = @('role', 'assignment', 'list', '--all', '--output', 'json')
 if ($IncludeInherited) {
     $listArgs += '--include-inherited'
 }

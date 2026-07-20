@@ -61,11 +61,11 @@ if (Get-Variable -Name PSNativeCommandUseErrorActionPreference -Scope Global -Er
 }
 
 Write-Host "Checking Azure CLI login state..."
-$account = az account show 2>$null | ConvertFrom-Json
+$account = az account show --output json 2>$null | ConvertFrom-Json
 if (-not $account) {
     Write-Host "Not logged in. Running az login..."
     az login | Out-Null
-    $account = az account show | ConvertFrom-Json
+    $account = az account show --output json | ConvertFrom-Json
 }
 $subscriptionId = $account.id
 $tenantId = $account.tenantId
@@ -73,7 +73,7 @@ Write-Host "Using subscription: $($account.name) ($subscriptionId)"
 
 Write-Host ""
 Write-Host "Checking for existing app registration $AppDisplayName ..."
-$existingApp = az ad app list --display-name $AppDisplayName --query "[0]" | ConvertFrom-Json
+$existingApp = az ad app list --display-name $AppDisplayName --query "[0]" --output json | ConvertFrom-Json
 
 if ($existingApp) {
     Write-Host "Found existing app: $($existingApp.appId)"
@@ -82,7 +82,7 @@ if ($existingApp) {
 }
 else {
     Write-Host "Creating new app registration..."
-    $app = az ad app create --display-name $AppDisplayName | ConvertFrom-Json
+    $app = az ad app create --display-name $AppDisplayName --output json | ConvertFrom-Json
     $appId = $app.appId
     $appObjectId = $app.id
     Write-Host "Created app: $appId"
@@ -90,10 +90,10 @@ else {
 
 Write-Host ""
 Write-Host "Checking for service principal..."
-$sp = az ad sp list --filter "appId eq '$appId'" --query "[0]" | ConvertFrom-Json
+$sp = az ad sp list --filter "appId eq '$appId'" --query "[0]" --output json | ConvertFrom-Json
 if (-not $sp) {
     Write-Host "Creating service principal..."
-    $sp = az ad sp create --id $appId | ConvertFrom-Json
+    $sp = az ad sp create --id $appId --output json | ConvertFrom-Json
 }
 else {
     Write-Host "Service principal already exists: $($sp.id)"
@@ -139,7 +139,7 @@ Remove-Item $tempFile -ErrorAction SilentlyContinue
 
 Write-Host ""
 Write-Host "Checking resource group $ResourceGroupName ..."
-$rgExists = az group exists --name $ResourceGroupName | ConvertFrom-Json
+$rgExists = az group exists --name $ResourceGroupName --output json | ConvertFrom-Json
 if (-not $rgExists) {
     Write-Host "Creating resource group in $Location..."
     az group create --name $ResourceGroupName --location $Location | Out-Null
@@ -169,7 +169,7 @@ $authWriterRoleName = "ztr-entra-lz CI Authorization Writer"
 
 Write-Host ""
 Write-Host "Checking for existing custom role $authWriterRoleName ..."
-$existingAuthWriterRole = az role definition list --name $authWriterRoleName --query "[0]" | ConvertFrom-Json
+$existingAuthWriterRole = az role definition list --name $authWriterRoleName --query "[0]" --output json | ConvertFrom-Json
 
 if ($existingAuthWriterRole) {
     Write-Host "Custom role already exists: $($existingAuthWriterRole.id)"
