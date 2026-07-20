@@ -60,10 +60,14 @@ jobs:
 
       - name: PSRule for Azure - policy-as-code baseline
         uses: microsoft/ps-rule@v2
-        continue-on-error: true  # POC-phase: 32 real findings tracked as backlog in
-        # docs/compliance-mapping.md rather than blocking pipeline progress - see that
-        # doc for the remediation list and rationale. Re-enable as a hard gate once
-        # the backlog is cleared (target: before Phase 2 / production-readiness pass).
+        continue-on-error: true  # UNVERIFIED as of 2026-07-20: the "32 findings" figure
+        # this comment used to cite has no retained SARIF/output artifact anywhere in this
+        # repo - it can't be confirmed or refuted without re-running the scan. Re-running
+        # it locally to triage for real needs PSRule.Rules.Azure from the PowerShell
+        # Gallery, which this project's usual sandboxed dev environment can't reach - do
+        # that triage from a runner with real internet access (this CI job qualifies),
+        # save reports/psrule-results.sarif somewhere durable, and use it to decide what's
+        # real vs. stale before flipping this to a hard gate.
         with:
           modules: 'PSRule.Rules.Azure'
           inputPath: 'bicep/'
@@ -72,7 +76,19 @@ jobs:
 
       - name: Checkov IaC security scan
         uses: bridgecrewio/checkov-action@master
-        continue-on-error: true  # same rationale as PSRule step above
+        # Hard gate as of 2026-07-20, re-verified with a local `checkov 3.3.8 -d bicep/
+        # --framework bicep` run: 0 real failing checks against everything it can parse -
+        # the sole finding (CKV_AZURE_87 on the looped Defender pricing-plan resource) is a
+        # confirmed false positive, and its checkov:skip now actually registers (see
+        # defenderForCloud.bicep) after a stray UTF-8 BOM in main.bicep that was silently
+        # breaking Checkov's own Bicep parser got fixed too. Caveat this gate doesn't cover:
+        # checkov's Bicep parser (pycep) cannot parse conditionalAccess.bicep, pim.bicep,
+        # groups.bicep, or sentinel/analyticsRules.bicep at all - confirmed via direct
+        # pycep.BicepParser calls, root-caused to the Graph Bicep extension's `extension`
+        # declaration and Bicep's `$'''` interpolated multi-line strings, neither of which
+        # this checkov version's grammar supports. Those four files get zero Checkov
+        # coverage today regardless of gate status - this hard gate does not mean they're
+        # clean, only that everything Checkov can actually see is.
         with:
           directory: bicep/
           framework: bicep
@@ -113,7 +129,7 @@ jobs:
           fi
           echo "Confirmed: deploying to sandbox tenant $CURRENT_TENANT"
 
-      - name: What-If at subscription scope
+      - name: What-If at subscription scope (human-readable)
         run: |
           az deployment sub what-if \
             --location uksouth \
@@ -121,13 +137,18 @@ jobs:
             --parameters bicep/params/${{ github.event.inputs.environment || 'sandbox' }}.bicepparam \
             --parameters pipelineServicePrincipalAppId=${{ secrets.AZURE_CLIENT_ID }}
 
-      - name: Gate - block on unexpected delete of identity-plane resources
+      - name: What-If at subscription scope (JSON, for the delete guard)
         run: |
-          # Custom guard: fail the pipeline if What-If reports a Delete
-          # against any Conditional Access / PIM / RBAC resource type.
-          # (Implementation: parse what-if JSON output, grep for "Delete"
-          # change type against Microsoft.Graph/* or Microsoft.Authorization/*)
-          echo "Guard script placeholder - see scripts/ci/whatif-delete-guard.sh"
+          az deployment sub what-if \
+            --location uksouth \
+            --template-file bicep/main.bicep \
+            --parameters bicep/params/${{ github.event.inputs.environment || 'sandbox' }}.bicepparam \
+            --parameters pipelineServicePrincipalAppId=${{ secrets.AZURE_CLIENT_ID }} \
+            --result-format FullResourcePayloads \
+            -o json > whatif-result.json
+
+      - name: Gate - block on unexpected delete of identity-plane resources
+        run: ./scripts/ci/whatif-delete-guard.sh whatif-result.json
 
   # ---------- Stage 3: Deploy (main branch only, requires environment approval) ----------
   deploy:

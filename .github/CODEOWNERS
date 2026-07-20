@@ -1,5 +1,13 @@
 # Segregation of duties (ISO27001 A.5.3): identity-plane changes require
 # review from someone outside the requesting team.
+#
+# CURRENT STATE: this repo has one operator, so the team handles below are
+# the intended Phase 2 ownership split, not real GitHub teams today - they
+# don't resolve to anyone, and branch protection (configure-repo-protections.py)
+# does not set `require_code_owner_reviews`, so this file is not yet an
+# enforced gate. It records the intended reviewer-per-area split so wiring
+# it up is a config change, not a design decision, once a second
+# collaborator exists (see docs/phase2-roadmap.md #5).
 
 /bicep/modules/conditionalAccess.bicep   @your-org/identity-admins
 /bicep/modules/pim.bicep                 @your-org/identity-admins

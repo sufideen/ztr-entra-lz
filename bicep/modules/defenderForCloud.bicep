@@ -24,16 +24,14 @@ var plansToEnable = [
 // plans. @batchSize(1) forces sequential deployment to avoid that lock
 // contention.
 //
-// checkov:skip=CKV_AZURE_87: false positive - Checkov can't resolve the
-// looped `name: plan` against the literal 'KeyVaults' string this check
-// needs to match, even though plansToEnable (below) includes 'KeyVaults'
-// at pricingTier 'Standard'. Confirmed via local checkov 3.3.8 run that
-// the generic CKV_AZURE_19 ("standard pricing tier is selected") passes
-// on this same resource - only the plan-name-specific checks (CKV_AZURE_87
-// for Key Vault, and presumably the equivalent for other named plans) fail
-// due to this static-analysis limitation with Bicep for-loops.
+// CKV_AZURE_87 (Key Vault Defender plan) needs a checkov:skip comment
+// because it cannot match a looped name against the KeyVaults plan below.
+// That comment has to live inside the loop body, not up here - checkov
+// 3.3.8 does not associate a skip with a resource declared via a for-loop
+// unless the comment sits inside the loop body itself.
 @batchSize(1)
 resource defenderPlans 'Microsoft.Security/pricings@2024-01-01' = [for plan in plansToEnable: {
+  // checkov:skip=CKV_AZURE_87: false positive, see note above the loop
   name: plan
   properties: {
     pricingTier: 'Standard'

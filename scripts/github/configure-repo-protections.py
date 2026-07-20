@@ -73,6 +73,11 @@ branch_protection_body = {
     "required_pull_request_reviews": {
         "required_approving_review_count": 0,  # see NOTE in module docstring
         "dismiss_stale_reviews": True,
+        "require_code_owner_reviews": False,  # explicit, not just the API default -
+        # .github/CODEOWNERS is currently a documented Phase 2 target, not a real
+        # reviewer roster (its team handles don't exist yet), so enforcing it here
+        # would block every PR with an unsatisfiable review requirement. Flip to
+        # True in the same PR that adds real teams to CODEOWNERS.
     },
     "restrictions": None,  # no push restriction beyond PR requirement — sole collaborator for now
 }

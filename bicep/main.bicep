@@ -1,4 +1,4 @@
-﻿targetScope = 'subscription'
+targetScope = 'subscription'
 
 // STATUS: retargeted from managementGroup to subscription scope on
 // 2026-07-11. The original design assumed a full Azure Landing Zone

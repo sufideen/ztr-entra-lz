@@ -136,10 +136,27 @@ Environment (or run `configure-repo-secrets.py`).
 
 ## Next steps
 
-Done as of PRs #8–#23: the pipeline is green end to end, both Pester
+Done as of PRs #8–#32: the pipeline is green end to end, both Pester
 suites are written and CI-wired, the Sentinel compliance workbook and
 ISO 27001 policy assignment are deployed, and the break-glass/Access
-Review runbooks are documented. What's left, in `docs/phase2-roadmap.md`:
+Review runbooks are documented. Since #23: the Graph API permission-grant
+script and decision record (`docs/graph-resources.md`) are ready to
+execute, `BREAK_GLASS_GROUP_ID` is wired into the CA/PIM fallback scripts,
+a chain of real bugs in the Graph scripts got fixed (missing `-TenantId`,
+a wrong assignment-policy cmdlet, an em-dash breaking PowerShell parsing,
+contractor/vendor guest emails validated against the right domain), the
+Access Package licensing/billing/policy blocker chain hit during real
+tenant testing is documented, and an RBAC audit CSV export script now
+backs the compliance evidence collection process. Most recently: the
+What-If delete guard (`scripts/ci/whatif-delete-guard.sh`) is implemented
+for real instead of a placeholder `echo`, Checkov is re-enabled as a hard
+gate after a local `checkov` re-run found and fixed a stray BOM in
+`main.bicep` that was silently breaking its Bicep parser (plus a
+`checkov:skip` annotation that wasn't actually registering — see
+`defenderForCloud.bicep`), and `.github/CODEOWNERS` now says plainly that
+its team handles are a Phase 2 target, not real reviewers, since branch
+protection doesn't enforce it today. What's left, in
+`docs/phase2-roadmap.md`:
 
 - **Close the Graph resources gap for real**: `conditionalAccess.bicep`,
   `pim.bicep`, and the newer `groups.bicep` all stay disabled/unwired
@@ -147,10 +164,16 @@ Review runbooks are documented. What's left, in `docs/phase2-roadmap.md`:
   Bicep CLI) — or committing fully to the PowerShell fallback path in
   `scripts/graph/`, which needs the CI identity granted actual Graph API
   permissions via tenant admin consent. This is the root blocker behind
-  most of what's below; see `docs/graph-resources.md`.
-- **Re-enable PSRule as a hard gate** (currently `continue-on-error: true`
-  in `deploy.yml`) once the 32-item backlog in `docs/compliance-mapping.md`
-  is cleared.
+  most of what's below, and the single highest-impact thing left — it's
+  the difference between CA/PIM being *designed* and being *enforced*;
+  see `docs/graph-resources.md`.
+- **Re-verify the PSRule backlog for real.** The "32 findings" this
+  section used to cite has no retained SARIF/output anywhere in the repo
+  to check it against — treat it as stale, not as a real number, until
+  someone re-runs the CI step with real internet access to
+  PSRule.Rules.Azure (this project's usual sandboxed dev environment
+  can't reach the PowerShell Gallery) and triages the actual output. See
+  the comment above the PSRule step in `deploy.yml`.
 - **Real management-group hierarchy**: needs tenant-root privilege on the
   CI identity, and a management-group tree actually standing in the
   tenant, before `main.bicep`'s `targetScope` can move off subscription
