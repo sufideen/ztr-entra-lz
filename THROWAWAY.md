@@ -110,6 +110,17 @@ If test persona accounts were created via `scripts/graph/create-test-personas.ps
 also run `scripts/graph/teardown-test-personas.ps1` - the sandbox script
 above does not touch Entra ID objects.
 
+`teardown-sandbox.ps1` only removes what `bicep/main.bicep` deploys. Since
+this is an all-in-one subscription also used ad hoc for POC/demo/testing,
+other resource groups can accumulate outside that scope and keep billing
+unnoticed. To clear every resource group in the subscription (not just
+`rg-security-<environment>`), run:
+
+```powershell
+.\scripts\azure\teardown-all-resource-groups.ps1        # dry run - lists what would be deleted
+.\scripts\azure\teardown-all-resource-groups.ps1 -Force  # actually deletes everything + resets Defender plans
+```
+
 After running, confirm via Cost Management + Billing that the expected
-resources are gone and billing has stopped - the script doesn't wait for
+resources are gone and billing has stopped - neither script waits for
 the (asynchronous) resource group deletion to finish.
