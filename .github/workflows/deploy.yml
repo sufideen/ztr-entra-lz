@@ -193,6 +193,18 @@ jobs:
   drift-detection:
     if: github.event_name == 'schedule'
     runs-on: ubuntu-latest
+    # STATUS: targets 'sandbox' - the only environment that actually has a
+    # federated credential + secrets provisioned (see THROWAWAY.md: this repo
+    # has no real prod tenant/environment set up yet). This job originally
+    # targeted prod.bicepparam with no `environment:` binding at all, which
+    # made its OIDC token's subject claim `repo:org/repo:ref:refs/heads/main`
+    # instead of `repo:org/repo:environment:sandbox` - that didn't match the
+    # federated credential setup-federated-identity.ps1 creates, so the job
+    # failed at login with AADSTS700213 the first time the weekly cron fired.
+    # Re-point this at a real `prod` environment (new federated credential +
+    # GitHub Environment + secrets, run setup-federated-identity.ps1 against
+    # the actual production tenant) once one exists - see Phase 2 roadmap.
+    environment: sandbox
     steps:
       - uses: actions/checkout@v4
       - uses: azure/login@v2
@@ -200,12 +212,12 @@ jobs:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
-      - name: What-If drift check against prod
+      - name: What-If drift check against sandbox
         run: |
           az deployment sub what-if \
             --location uksouth \
             --template-file bicep/main.bicep \
-            --parameters bicep/params/prod.bicepparam \
+            --parameters bicep/params/sandbox.bicepparam \
             --parameters pipelineServicePrincipalAppId=${{ secrets.AZURE_CLIENT_ID }} \
             --result-format FullResourcePayloads > drift-report.json
 
