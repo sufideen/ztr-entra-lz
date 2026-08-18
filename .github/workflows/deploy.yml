@@ -164,6 +164,20 @@ jobs:
           ./scripts/graph/deploy-conditional-access.ps1 -Environment ${{ github.event.inputs.environment || 'sandbox' }}
           ./scripts/graph/deploy-pim-policies.ps1 -Environment ${{ github.event.inputs.environment || 'sandbox' }}
 
+      - name: Check CI identity role assignments for standing-privilege drift (diagnostic)
+        shell: pwsh
+        # Report-only, not -Fix: the CI identity's grant deliberately excludes
+        # Microsoft.Authorization/roleAssignments/* (see README "One-time
+        # bootstrap: CI OIDC identity") specifically so it can never modify
+        # anyone's access, including its own - so it structurally cannot run
+        # -Fix against itself, and shouldn't even if it could. This step just
+        # surfaces drift early with an actionable remediation command; the
+        # Pester test below remains the authoritative pass/fail signal, so a
+        # failure here doesn't block the job.
+        continue-on-error: true
+        run: |
+          ./scripts/azure/reconcile-ci-identity-roles.ps1
+
       - name: Install Az PowerShell modules for post-deploy tests
         shell: pwsh
         run: |
@@ -194,6 +208,19 @@ jobs:
             --parameters bicep/params/prod.bicepparam \
             --parameters pipelineServicePrincipalAppId=${{ secrets.AZURE_CLIENT_ID }} \
             --result-format FullResourcePayloads > drift-report.json
+
+      - name: Check CI identity role assignments for standing-privilege drift
+        shell: pwsh
+        # Report-only (no -Fix): this job runs unattended on a schedule with
+        # no manual approval gate, and the CI identity's own grant deliberately
+        # excludes Microsoft.Authorization/roleAssignments/*, so it structurally
+        # cannot fix this itself anyway. Non-zero exit surfaces the drift in
+        # the run status; an admin runs -Fix by hand once notified (see README
+        # "Troubleshooting: post-deploy test failures").
+        continue-on-error: true
+        run: |
+          ./scripts/azure/reconcile-ci-identity-roles.ps1
+
       - name: Alert on drift
         run: |
           echo "Wire this step to notify Sentinel/Teams if drift-report.json shows unexpected changes"
