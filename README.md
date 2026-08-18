@@ -173,3 +173,50 @@ Analytics retention, Defender plan tiers, Sentinel rule state, custom
 RBAC role definitions, the CI identity's own role assignments) actually
 match what was intended. See its header for how to run it locally against
 the sandbox subscription.
+
+### Troubleshooting: post-deploy test failures
+
+**`CI identity holds only the documented standing role assignments` fails**
+("unexpected roles found: ...", or the role count isn't exactly 2):
+
+- **Cause**: the CI service principal (`ztr-entra-lz-ci`) has picked up a
+  role assignment beyond the two documented above (Contributor + the
+  custom Authorization Writer role) — a standing-privilege regression on
+  an unattended identity. This is usually a human granting themselves/the
+  SP an extra role (e.g. `Owner`, `Reader`) via the Portal while debugging
+  a permissions error and forgetting to revoke it, or a manual
+  `az role assignment create` against this principal outside
+  `setup-federated-identity.ps1`.
+- **Diagnose**: `./scripts/azure/reconcile-ci-identity-roles.ps1` — lists
+  every role assignment held by the CI identity against the documented
+  allow-list, without changing anything. The `deploy` job now runs this
+  automatically (report-only) right before the post-deploy Pester suite,
+  so drift is flagged with an actionable message even before the test
+  fails.
+  - This can *not* auto-fix itself from inside the pipeline: the CI SP's
+    own grant deliberately excludes `Microsoft.Authorization/roleAssignments/*`
+    (see "One-time bootstrap" above) so it can never modify anyone's
+    access, including its own. That exclusion is the whole point of the
+    custom role — an identity that could revoke its own drift could just
+    as easily grant itself more.
+- **Auto-fix**: run, under your own admin credentials (`az login` as a
+  user with Owner/User Access Administrator — the same bar as
+  `setup-federated-identity.ps1`), not the CI identity's:
+  ```powershell
+  ./scripts/azure/reconcile-ci-identity-roles.ps1 -Fix
+  ```
+  This removes every undocumented role assignment on the CI identity,
+  re-asserting least privilege, then re-run the Pester test (or the
+  `deploy` job) to confirm.
+- **To avoid it**: never grant this SP additional roles by hand, even
+  temporarily — extend `setup-federated-identity.ps1` (and the allow-list
+  in `reconcile-ci-identity-roles.ps1` / the Pester test) instead, so the
+  extra grant is documented, code-reviewed, and idempotently reproducible.
+
+**Any other `PostDeploy.Tests.ps1` failure** (workspace/retention,
+Defender plan tier, Sentinel rule state, custom role existence): these
+assert against what `main.bicep` should have just deployed, so a failure
+here almost always means the preceding "Deploy landing zone (Bicep)" step
+partially failed or a resource was hand-edited out of band — re-run
+`az deployment sub what-if` locally against the same params to see the
+actual vs. expected state before re-deploying.
