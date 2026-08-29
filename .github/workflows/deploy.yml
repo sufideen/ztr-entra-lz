@@ -11,10 +11,14 @@ on:
     branches: [main]
     paths:
       - 'bicep/**'
+      - 'tests/**'
+      - 'scripts/purview/**'
   push:
     branches: [main]
     paths:
       - 'bicep/**'
+      - 'tests/**'
+      - 'scripts/purview/**'
   workflow_dispatch:
     inputs:
       environment:
@@ -53,6 +57,10 @@ jobs:
       - name: Regression test - Conditional Access policies must be report-only
         shell: pwsh
         run: Invoke-Pester -Path ./tests/ConditionalAccess.RegressionGuard.Tests.ps1 -CI
+
+      - name: Regression test - DLP policies must be report-only
+        shell: pwsh
+        run: Invoke-Pester -Path ./tests/DlpPolicies.RegressionGuard.Tests.ps1 -CI
 
       - name: Ensure reports directory exists
         if: always()

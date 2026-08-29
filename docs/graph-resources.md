@@ -1,4 +1,4 @@
-# Decision record: Deploying Microsoft Graph resources (CA, PIM, Access Packages)
+# Decision record: Deploying Microsoft Graph resources (CA, PIM, Access Packages, DLP)
 
 ## Problem
 
@@ -103,3 +103,54 @@ auditable (two named permissions, admin-consent is a separate deliberate
 step, not silent), which is the same least-privilege bar the rest of this
 repo's RBAC decisions have held to (see README's "One-time bootstrap: CI
 OIDC identity" for the equivalent reasoning on the Azure RBAC side).
+
+## Update - 2026-08-29: DLP/Purview is a separate control plane, not Microsoft Graph
+
+Investigating what it would take to add Microsoft Purview DLP (Data Loss
+Prevention) policies (see `scripts/purview/deploy-dlp-policies.ps1`) found
+this doesn't fit the CA/PIM/Access-Package pattern above at all: Purview DLP
+compliance policies (`New-DlpCompliancePolicy`, `New-DlpComplianceRule`) are
+Security & Compliance Center resources, managed through Security &
+Compliance PowerShell (`ExchangeOnlineManagement` module,
+`Connect-IPPSSession`) - **not** Microsoft Graph, and with no confirmed
+Bicep-deployable resource type at all (unlike CA/PIM, whose Graph resource
+types are real and just currently blocked by this CI's Bicep CLI version).
+
+**This needs verification, not treated as settled**: whether Microsoft
+Graph (stable or beta) exposes any DLP policy surface today, and if so
+whether a Bicep extension resource type exists for it, should be re-checked
+against current Graph API docs before ruling out a Bicep-first approach
+permanently.
+
+Given that, this repo's decision for DLP is:
+
+- **No `.bicep` module for DLP** for now - unlike `conditionalAccess.bicep`/
+  `pim.bicep` (kept as "intended future state" because their resource types
+  are confirmed real), authoring speculative Bicep for an unconfirmed
+  resource type risks breaking `az bicep build` in `lint-and-scan` for no
+  benefit. Revisit once the point above is verified.
+- **`scripts/purview/deploy-dlp-policies.ps1` is the real and only source of
+  truth**, not a fallback - it lives in its own `scripts/purview/`
+  directory (rather than `scripts/graph/`) precisely because it talks to a
+  different control plane with a different PowerShell module and a
+  different auth story.
+- **Open question, not yet resolved**: whether `Connect-IPPSSession`/
+  `Connect-ExchangeOnline` can authenticate unattended using this repo's
+  existing OIDC federated credential (avoiding a new stored secret, keeping
+  the "no stored secrets, anywhere" posture from README.md), or whether it
+  requires certificate-based app-only auth instead - check current
+  `ExchangeOnlineManagement` module release notes/docs before deciding.
+  Until this is resolved, `deploy-dlp-policies.ps1` runs only via an
+  interactive `Connect-IPPSSession` (a human operator's own delegated
+  session), same as the human-operator-only class of scripts in
+  `scripts/graph/` (`create-test-personas.ps1` etc.) - it is not wired into
+  `deploy.yml`.
+- **Additional permission surface beyond a Graph app-role grant**: even
+  once an auth mechanism is chosen, `scripts/azure/grant-exchange-api-permissions.ps1`
+  granting `Exchange.ManageAsApp` + admin consent is not sufficient on its
+  own - the app registration must also be added to an Exchange Online RBAC
+  role group scoped to DLP management (that script prints, but does not
+  run, the `New-RoleGroup`/`Add-RoleGroupMember` commands for this).
+
+Tracked as a Phase 2 item alongside the existing Graph resources gap: see
+`docs/phase2-roadmap.md`.

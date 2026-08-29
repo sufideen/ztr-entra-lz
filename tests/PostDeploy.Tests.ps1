@@ -1,4 +1,5 @@
 #Requires -Modules Pester, Az.Accounts, Az.SecurityInsights, Az.Security, Az.Resources, Az.OperationalInsights
+#Requires -Modules ExchangeOnlineManagement
 
 <#
 .SYNOPSIS
@@ -73,6 +74,31 @@ Describe 'Custom RBAC role definitions' {
     It '<_> exists at subscription scope' -ForEach $script:ExpectedCustomRoles {
         $role = Get-AzRoleDefinition -Name $_
         $role | Should -Not -BeNullOrEmpty
+    }
+}
+
+Describe 'DLP compliance policies' {
+    # Unlike the Describes above, this block has no live CI wiring yet: the
+    # `deploy` job above only authenticates via azure/login (ARM + Graph),
+    # never Connect-IPPSSession, so ExchangeOnlineManagement/Get-DlpCompliancePolicy
+    # is not available in that job today - the exact same "authored but not
+    # actually live" gap this repo already has open for Conditional
+    # Access/PIM (see docs/graph-resources.md). Left failing loudly here
+    # rather than -Skip'd, so the gap stays visible instead of silently
+    # hidden - run manually after `Connect-IPPSSession` against the sandbox
+    # tenant once scripts/purview/deploy-dlp-policies.ps1 has been run.
+    It '<_> exists' -ForEach @(
+        'DLP001 - Financial data - Restrict credit card sharing in SharePoint/OneDrive',
+        'DLP002 - PII - Audit national ID data leaving via Exchange email'
+    ) {
+        { Get-DlpCompliancePolicy -Identity $_ -ErrorAction Stop } | Should -Not -Throw
+    }
+
+    It '<_> is not yet fully Enabled (still in bake period)' -ForEach @(
+        'DLP001 - Financial data - Restrict credit card sharing in SharePoint/OneDrive',
+        'DLP002 - PII - Audit national ID data leaving via Exchange email'
+    ) {
+        (Get-DlpCompliancePolicy -Identity $_).Mode | Should -Not -Be 'Enable'
     }
 }
 
