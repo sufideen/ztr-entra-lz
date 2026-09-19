@@ -24,7 +24,7 @@ federated deploy credentials (no stored secrets, anywhere).
   Security & Compliance PowerShell resources with no confirmed Microsoft
   Graph/Bicep resource type — see `docs/graph-resources.md`).
 - This repo does **not** own: application infrastructure (see
-  `ict-labs-platform`), Access Package definitions (owned by
+  the application-infrastructure repo (separate, not published)), Access Package definitions (owned by
   `scripts/graph`, since Entitlement Management isn't yet a stable Bicep
   resource type — see `docs/graph-resources.md`).
 
@@ -161,7 +161,7 @@ Review runbooks are documented. What's left, in `docs/phase2-roadmap.md`:
 - **Real segregation of duties**: `.github/CODEOWNERS` and
   `configure-repo-protections.py` are both deliberately simplified for
   solo operation — need a second collaborator before they mean anything.
-- **`ict-labs-platform` integration**: undetermined until that repo is
+- **Application-infrastructure repo integration**: undetermined until that repo is
   assessed directly.
 - **Wire up DLP unattended deployment**: `scripts/purview/deploy-dlp-policies.ps1`
   currently runs only via an interactive `Connect-IPPSSession` — whether it
@@ -232,3 +232,8 @@ here almost always means the preceding "Deploy landing zone (Bicep)" step
 partially failed or a resource was hand-edited out of band — re-run
 `az deployment sub what-if` locally against the same params to see the
 actual vs. expected state before re-deploying.
+
+## Compliance
+
+- [GDPR alignment](docs/gdpr-alignment.md)
+- [ISO 27001 mapping](docs/compliance-mapping.md)

@@ -11,7 +11,7 @@ ISO 27001:2022 Annex A controls, with the evidence location for an audit.
 | Approval + justification on privilege elevation | User access control | A.5.16, A.8.2 | `pim.bicep` approval rules | PIM activation audit log |
 | Device compliance for admin access | Malware protection / secure config | A.8.1, A.8.9 | `conditionalAccess.bicep` CA010 | Intune compliance + CA sign-in logs |
 | Patch/update management | Security update management | A.8.8 | Azure Update Manager (managed subscription) | Update Manager compliance report |
-| Boundary firewall / network segmentation | Firewalls | A.8.20, A.8.22 | ALZ hub-spoke + NSGs (see `ict-labs-platform`) | NSG flow logs in central LAW |
+| Boundary firewall / network segmentation | Firewalls | A.8.20, A.8.22 | ALZ hub-spoke + NSGs (see the separate application-infrastructure repo, not published) | NSG flow logs in central LAW |
 | Central logging, 365-day retention | — | A.8.15, A.12.4 | `logAnalyticsWorkspace.bicep` | Workspace retention config, exported via policy |
 | Continuous monitoring / detection | — | A.5.7, A.8.16 | Sentinel analytics rules (`analyticsRules.bicep`) | Sentinel incidents, workbooks |
 | Vulnerability/posture management | Malware protection | A.8.8, A.8.9 | Defender for Cloud CSPM plan | Secure Score export to LAW |
