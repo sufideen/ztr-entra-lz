@@ -119,23 +119,23 @@ of the enterprise-readiness path, not a separate concern:
       to the ISO 27001 built-in initiative —
       `bicep/modules/compliance/iso27001PolicyAssignment.bicep`.
 
-## 7. ict-labs-platform integration
+## 7. Application-infrastructure repo integration
 
 **Status: undetermined — needs that repo's own contents to assess
-concretely.** This session doesn't have access to `ict-labs-platform`, so
+concretely.** This session doesn't have access to the application-infrastructure repo (separate, not published), so
 the integration surface below is inferred from this repo's design alone,
 not verified against the other side:
 
 - `diagnosticSettings.bicep`'s `DeployIfNotExists` policy is subscription-wide,
-  so any ict-labs-platform resource in the same subscription gets swept
+  so any the application-infrastructure repo (separate, not published) resource in the same subscription gets swept
   into central logging automatically, no coordination needed.
 - Defender for Cloud / Sentinel are similarly subscription-wide —
-  ict-labs-platform inherits them for free once both land in the same
+  the application-infrastructure repo (separate, not published) inherits them for free once both land in the same
   subscription.
 - The custom RBAC roles (`pipelineDeployRole`, `vendorAppDeployer` in
   `customRoles.bicep`) look purpose-built for a *different* pipeline
   identity to assume — but nothing here actually establishes that
-  cross-repo federated-credential trust. If ict-labs-platform's CI needs
+  cross-repo federated-credential trust. If the application-infrastructure repo (separate, not published)'s CI needs
   to deploy into resources this repo manages, that trust relationship
   needs to be built explicitly (its own federated credential + role
   assignment), not assumed.
