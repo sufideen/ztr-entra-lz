@@ -238,13 +238,6 @@ actual vs. expected state before re-deploying.
 - [GDPR alignment](docs/gdpr-alignment.md)
 - [ISO 27001 mapping](docs/compliance-mapping.md)
 
-## How this was built
-
-The architecture, scope and security decisions are the author's. Claude (Anthropic's
-AI assistant) was used as a coding assistant to draft code and documentation, and every
-change was reviewed and merged by the author. Commits and pull requests co-authored by
-Claude are labelled as such in the history.
-
 ## Reproduce it from scratch
 
 1. **Prerequisites:** an Azure subscription (this creates billable resources, so use a
