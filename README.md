@@ -19,7 +19,10 @@ federated deploy credentials (no stored secrets, anywhere).
 - This repo owns: Conditional Access policies, PIM role settings, custom
   Azure RBAC role definitions, central Log Analytics workspace, Sentinel
   analytics rules/workbooks, Defender for Cloud plan configuration,
-  diagnostic settings policy.
+  diagnostic settings policy, Microsoft Purview DLP (Data Loss Prevention)
+  policies (owned by `scripts/purview/`, since DLP compliance policies are
+  Security & Compliance PowerShell resources with no confirmed Microsoft
+  Graph/Bicep resource type — see `docs/graph-resources.md`).
 - This repo does **not** own: application infrastructure (see
   `ict-labs-platform`), Access Package definitions (owned by
   `scripts/graph`, since Entitlement Management isn't yet a stable Bicep
@@ -160,13 +163,22 @@ Review runbooks are documented. What's left, in `docs/phase2-roadmap.md`:
   solo operation — need a second collaborator before they mean anything.
 - **`ict-labs-platform` integration**: undetermined until that repo is
   assessed directly.
+- **Wire up DLP unattended deployment**: `scripts/purview/deploy-dlp-policies.ps1`
+  currently runs only via an interactive `Connect-IPPSSession` — whether it
+  can authenticate unattended via this repo's existing OIDC federated
+  credential, or needs certificate-based app-only auth instead, is an open
+  question; see `docs/graph-resources.md`'s 2026-08-29 entry.
 
 ## Testing
 
 `tests/ConditionalAccess.RegressionGuard.Tests.ps1` is a static Pester
 test (no Azure credentials needed) that runs in CI on every PR, verifying
 every Conditional Access policy deploys report-only per `THROWAWAY.md`
-Step 5. `tests/PostDeploy.Tests.ps1` is a live-resource Pester suite that
+Step 5. `tests/DlpPolicies.RegressionGuard.Tests.ps1` is the same static,
+no-credentials pattern applied to `scripts/purview/deploy-dlp-policies.ps1`,
+verifying every DLP policy deploys in `TestWithNotifications` mode, never
+`Enable` — see `docs/graph-resources.md` for why DLP has no `.bicep`
+equivalent. `tests/PostDeploy.Tests.ps1` is a live-resource Pester suite that
 runs in CI as part of the `deploy` job, right after "Deploy landing zone
 (Bicep)" — it asserts the resources main.bicep just deployed (Log
 Analytics retention, Defender plan tiers, Sentinel rule state, custom

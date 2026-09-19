@@ -21,6 +21,8 @@ ISO 27001:2022 Annex A controls, with the evidence location for an audit.
 | No stored credentials in pipelines | Secure configuration | A.8.24 | OIDC Workload Identity Federation | GitHub Actions OIDC token exchange logs |
 | Segregation of duties (deploy vs approve) | — | A.5.3 | GitHub environment protection rules (manual approval on prod) | GitHub environment deployment history |
 | Incident detection & response readiness | — | A.5.24, A.5.26 | Sentinel incidents + playbooks (extend as needed) | Sentinel incident queue |
+| Data leakage prevention (financial data) | — | A.8.12 *(verify against SoA)* | `deploy-dlp-policies.ps1` DLP001 | Purview DLP policy matches, Activity explorer |
+| Data classification / PII handling | — | A.5.12, A.8.12 *(verify against SoA)* | `deploy-dlp-policies.ps1` DLP002 | Purview DLP incident reports, Activity explorer |
 
 ## Audit evidence collection
 
@@ -51,3 +53,9 @@ verification, evidence is pulled from:
 - [x] Assign the built-in ISO 27001:2013 regulatory-compliance initiative
       (`bicep/modules/compliance/iso27001PolicyAssignment.bicep`) so the
       Defender for Cloud regulatory compliance dashboard maps to it
+- [ ] Confirm the A.8.12/A.5.12 control numbers above against this
+      organization's actual ISO 27001:2022 Statement of Applicability, and
+      promote the two DLP policies out of `TestWithNotifications` (see
+      `docs/graph-resources.md`) once a bake period confirms no false
+      positives - an audit needs evidence of enforcement, not just report-only
+      matches
